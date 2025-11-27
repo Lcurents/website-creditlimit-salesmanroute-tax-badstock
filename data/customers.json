@@ -1,0 +1,4 @@
+[
+    {"id": 1, "name": "Warung Bu Joko", "address": "Jl. Merdeka", "limit": 5000000, "debt": 4500000},
+    {"id": 2, "name": "Toko Sejahtera", "address": "Jl. Sudirman", "limit": 10000000, "debt": 0}
+]
