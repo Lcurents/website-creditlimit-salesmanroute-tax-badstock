@@ -1,1 +1,46 @@
-[]
+[
+    {
+        "id": 1764215274,
+        "date": "2025-11-27 04:47",
+        "customer_id": "1764214386",
+        "customer": "Jery",
+        "product_id": "MULTI",
+        "product": "Mie Instan Goreng (Dus) (x12), Kopi Sachet (Pack) (x15), Sosis (x15)",
+        "qty": "3 Jenis",
+        "total": 2295000,
+        "status": "APPROVED"
+    },
+    {
+        "id": 1764214709,
+        "date": "2025-11-27 04:38",
+        "customer_id": "1764214386",
+        "customer": "Jery",
+        "product_id": "2",
+        "product": "Kopi Sachet (Pack)",
+        "qty": 21,
+        "total": 315000,
+        "status": "DELIVERED"
+    },
+    {
+        "id": 1764214591,
+        "date": "2025-11-27 04:36",
+        "customer_id": "1764214386",
+        "customer": "Jery",
+        "product_id": "1",
+        "product": "Mie Instan Goreng (Dus)",
+        "qty": 25,
+        "total": 2750000,
+        "status": "DELIVERED"
+    },
+    {
+        "id": 1764214568,
+        "date": "2025-11-27 04:36",
+        "customer_id": "1764214386",
+        "customer": "Jery",
+        "product_id": "1",
+        "product": "Mie Instan Goreng (Dus)",
+        "qty": 25,
+        "total": 2750000,
+        "status": "DELIVERED"
+    }
+]

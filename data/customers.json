@@ -1,4 +1,19 @@
 [
-    {"id": 1, "name": "Warung Bu Joko", "address": "Jl. Merdeka", "limit": 5000000, "debt": 4500000},
-    {"id": 2, "name": "Toko Sejahtera", "address": "Jl. Sudirman", "limit": 10000000, "debt": 0}
+    {
+        "id": 1,
+        "name": "Warung Jery",
+        "address": "Jl. Alang Lebar",
+        "join_date": "2023-01-01",
+        "limit": 50000000,
+        "debt": 0,
+        "score_data": 1150
+    },
+    {
+        "id": 1764216376,
+        "name": "Laurentius Dika",
+        "address": "Jl.Hasyiman,Palembang",
+        "limit": 25000000,
+        "score_data": 950,
+        "debt": 0
+    }
 ]
