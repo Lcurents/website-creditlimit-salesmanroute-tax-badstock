@@ -21,6 +21,11 @@
             </a>
         </li>
         <li>
+            <a href="pajak.php" class="<?= basename($_SERVER['PHP_SELF']) == 'pajak.php' ? 'active' : '' ?>">
+                PAJAK KENDARAAN
+            </a>
+        </li>
+        <li>
             <a href="settings.php" class="<?= basename($_SERVER['PHP_SELF']) == 'settings.php' ? 'active' : '' ?>">
                 SETTINGS
             </a>
