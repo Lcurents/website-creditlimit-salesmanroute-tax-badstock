@@ -1,0 +1,74 @@
+[
+    {
+        "id": 1678900001,
+        "salesman_id": 1,
+        "customer_id": 1,
+        "visit_date": "2025-12-05",
+        "sequence": 1,
+        "created_by": "silvia Fakturis"
+    },
+    {
+        "id": 1678900002,
+        "salesman_id": 1,
+        "customer_id": 1764216376,
+        "visit_date": "2025-12-05",
+        "sequence": 2,
+        "created_by": "silvia Fakturis"
+    },
+    {
+        "id": 1764569728,
+        "salesman_id": 1,
+        "customer_id": 1,
+        "visit_date": "2025-12-01",
+        "sequence": 1,
+        "created_by": "Silvia Fakturis"
+    },
+    {
+        "id": 1764626616,
+        "salesman_id": 10,
+        "customer_id": 1,
+        "visit_date": "2025-12-01",
+        "sequence": 1,
+        "created_by": "Silvia Fakturis"
+    },
+    {
+        "id": 1764576114,
+        "salesman_id": 1,
+        "customer_id": 1764216376,
+        "visit_date": "2025-12-01",
+        "sequence": 2,
+        "created_by": "Silvia Fakturis"
+    },
+    {
+        "id": 1764641352,
+        "salesman_id": 10,
+        "customer_id": 1764216376,
+        "visit_date": "2025-12-01",
+        "sequence": 2,
+        "created_by": "Silvia Fakturis"
+    },
+    {
+        "id": 1764657737,
+        "salesman_id": 10,
+        "customer_id": 1,
+        "visit_date": "2025-12-14",
+        "sequence": 1,
+        "created_by": "Silvia Fakturis"
+    },
+    {
+        "id": 1764618089,
+        "salesman_id": 10,
+        "customer_id": 1764216376,
+        "visit_date": "2025-12-14",
+        "sequence": 2,
+        "created_by": "Silvia Fakturis"
+    },
+    {
+        "id": 1764610638,
+        "salesman_id": 1,
+        "customer_id": 1,
+        "visit_date": "2025-12-14",
+        "sequence": 1,
+        "created_by": "Silvia Fakturis"
+    }
+]
