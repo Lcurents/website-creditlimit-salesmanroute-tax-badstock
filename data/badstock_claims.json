@@ -1,0 +1,14 @@
+[
+    {
+        "id": "CLM-1764226606",
+        "date": "2025-11-27 07:56",
+        "customer_id": "1",
+        "product_id": "2",
+        "qty": 21,
+        "reason": "gigit tikus",
+        "proof_image": "BS_1764226606_HADAP BELAKANG TULISAN UKMC KAKI KANAN.png",
+        "status": "APPROVED",
+        "salesman": "faktur",
+        "approve_date": "2025-11-27 07:58"
+    }
+]

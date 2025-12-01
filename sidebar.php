@@ -26,6 +26,11 @@
             </a>
         </li>
         <li>
+            <a href="badstock.php" class="<?= basename($_SERVER['PHP_SELF']) == 'badstock.php' ? 'active' : '' ?>">
+                BADSTOCK
+            </a>
+        </li>
+        <li>
             <a href="settings.php" class="<?= basename($_SERVER['PHP_SELF']) == 'settings.php' ? 'active' : '' ?>">
                 SETTINGS
             </a>
