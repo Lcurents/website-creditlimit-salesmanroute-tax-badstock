@@ -26,6 +26,11 @@
             </a>
         </li>
         <li>
+            <a href="schedule.php" class="<?= basename($_SERVER['PHP_SELF']) == 'pajak.php' ? 'active' : '' ?>">
+                SALESMAN
+            </a>
+        </li>
+        <li>
             <a href="badstock.php" class="<?= basename($_SERVER['PHP_SELF']) == 'badstock.php' ? 'active' : '' ?>">
                 BADSTOCK
             </a>

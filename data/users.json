@@ -1,5 +1,30 @@
 [
-    {"username": "faktur", "password": "123", "role": "FAKTURIS", "fullname": "silvia Fakturis"},
-    {"username": "finance", "password": "123", "role": "AR_FINANCE", "fullname": "Siti Finance"},
-    {"username": "gudang", "password": "123", "role": "WAREHOUSE", "fullname": "Pak Septa Gudang"}
+    {
+        "id": 1,
+        "username": "faktur", 
+        "password": "123", 
+        "role": "FAKTURIS", 
+        "fullname": "Silvia Fakturis"
+    },
+    {
+        "id": 2,
+        "username": "finance", 
+        "password": "123", 
+        "role": "AR_FINANCE", 
+        "fullname": "Siti Finance"
+    },
+    {
+        "id": 3,
+        "username": "gudang", 
+        "password": "123", 
+        "role": "WAREHOUSE", 
+        "fullname": "Pak Septa Gudang"
+    },
+    {
+        "id": 10,
+        "username": "sales_andi", 
+        "password": "456", 
+        "role": "FAKTURIS", 
+        "fullname": "Andi Salesman"
+    }
 ]
