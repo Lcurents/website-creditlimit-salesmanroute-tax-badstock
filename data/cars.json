@@ -2,17 +2,27 @@
     {
         "id": 1700001,
         "plat": "BG 1234 AB",
-        "mobil": "Grand Max Blind Van",
-        "pemilik": "PT Distribusi",
-        "pajak_tahunan": 2500000,
+        "mobil": "L 300",
+        "driver": "Yani sambas",
         "tgl_pajak": "2025-12-30"
     },
     {
         "id": 1700002,
-        "plat": "B 4567 CD",
+        "plat": "BG 4567 CD",
         "mobil": "Truk Engkel Canter",
-        "pemilik": "Inventaris Gudang",
-        "pajak_tahunan": 4500000,
-        "tgl_pajak": "2024-10-15"
+        "driver": " Eko binaraga",
+        "tgl_pajak": "2025-10-15",
+        "bukti_img": "1764225686_13133634.png",
+        "status_validasi": "APPROVED"
+    },
+    {
+        "id": 1764224595,
+        "plat": "BG 1234 VP",
+        "mobil": "Truk Engkel Center",
+        "driver": "Budi gultom",
+        "tgl_pajak": "2025-11-27",
+        "bukti_img": "",
+        "status_validasi": "NONE",
+        "pajak_tahunan": 0
     }
 ]

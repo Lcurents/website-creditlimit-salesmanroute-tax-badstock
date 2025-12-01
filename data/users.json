@@ -1,5 +1,5 @@
 [
-    {"username": "faktur", "password": "123", "role": "FAKTURIS", "fullname": "Budi Fakturis"},
+    {"username": "faktur", "password": "123", "role": "FAKTURIS", "fullname": "silvia Fakturis"},
     {"username": "finance", "password": "123", "role": "AR_FINANCE", "fullname": "Siti Finance"},
-    {"username": "gudang", "password": "123", "role": "WAREHOUSE", "fullname": "Pak Joko Gudang"}
+    {"username": "gudang", "password": "123", "role": "WAREHOUSE", "fullname": "Pak Septa Gudang"}
 ]
