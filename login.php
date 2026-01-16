@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <p>Distribusi & Sales Order Management</p>
         
         <?php if($error): ?>
-            <div style="background: #f8d7da; color: #721c24; padding: 12px; margin-bottom: 15px; border-radius: 5px; border: 1px solid #f5c6cb;">
+            <div style="background: #fff; color: #333; padding: 12px; margin-bottom: 15px; border: 2px solid #333;">
                 ⚠️ <?= $error ?>
             </div>
         <?php endif; ?>

@@ -38,53 +38,82 @@ $activeTab = "pelanggan"; // Default tab saat dibuka
  * Total Score Range: 0 - 2000 poin
  */
 function hitungCreditScore($rataJuta, $telatKali, $freqBulanan, $lamaTahun) {
+    // DETEKSI PELANGGAN BARU: Jika belum ada transaksi, beri limit default terendah
+    $isNewCustomer = ($freqBulanan == 0 && $lamaTahun == 0 && $rataJuta == 0);
+    
+    if ($isNewCustomer) {
+        // Pelanggan baru: default credit limit terendah
+        return [
+            'score' => 0,
+            'limit' => 5000000, // Rp 5 juta (default untuk pemula)
+            'breakdown' => json_encode([
+                'kriteria_1' => ['score' => 0, 'poin' => 0, 'label' => 'Rata Transaksi', 'bobot' => 35],
+                'kriteria_2' => ['score' => 0, 'poin' => 0, 'label' => 'Keterlambatan', 'bobot' => 30],
+                'kriteria_3' => ['score' => 0, 'poin' => 0, 'label' => 'Frekuensi', 'bobot' => 20],
+                'kriteria_4' => ['score' => 0, 'poin' => 0, 'label' => 'Lama Pelanggan', 'bobot' => 15]
+            ])
+        ];
+    }
+    
     // Kriteria 1: Rata-rata Transaksi (Bobot 35% = 0-700 poin)
     if ($rataJuta > 100) $s1 = 20; 
     elseif ($rataJuta >= 50) $s1 = 15; 
     elseif ($rataJuta >= 25) $s1 = 10; 
-    else $s1 = 5;
-    $total1 = $s1 * 35; // 35% FIXED ✅
+    elseif ($rataJuta >= 10) $s1 = 5;
+    else $s1 = 0; // PERBAIKAN: 0 untuk transaksi < 10 juta
+    $total1 = $s1 * 35;
     
     // Kriteria 2: Keterlambatan Bayar (Bobot 30% = 0-600 poin)
-    if ($telatKali == 0) $s2 = 20; 
-    elseif ($telatKali < 5) $s2 = 15; 
-    elseif ($telatKali < 15) $s2 = 10; 
-    else $s2 = 5;
-    $total2 = $s2 * 30; // 30% ✅
+    // PERBAIKAN: Pelanggan dengan frekuensi rendah (<3 transaksi) tidak dapat skor maksimal
+    if ($freqBulanan < 3) {
+        // Belum cukup data
+        $s2 = 0;
+    } elseif ($telatKali == 0) {
+        $s2 = 20; 
+    } elseif ($telatKali < 5) {
+        $s2 = 15; 
+    } elseif ($telatKali < 15) {
+        $s2 = 10; 
+    } else {
+        $s2 = 5;
+    }
+    $total2 = $s2 * 30;
 
     // Kriteria 3: Frekuensi Transaksi (Bobot 20% = 0-400 poin)
     if ($freqBulanan > 10) $s3 = 20; 
     elseif ($freqBulanan >= 5) $s3 = 15; 
     elseif ($freqBulanan >= 2) $s3 = 10; 
-    else $s3 = 5;
-    $total3 = $s3 * 20; // 20% ✅
+    elseif ($freqBulanan >= 1) $s3 = 5;
+    else $s3 = 0; // PERBAIKAN: 0 untuk belum ada transaksi
+    $total3 = $s3 * 20;
 
     // Kriteria 4: Lama Pelanggan (Bobot 15% = 0-300 poin)
     if ($lamaTahun > 10) $s4 = 20; 
     elseif ($lamaTahun >= 5) $s4 = 15; 
     elseif ($lamaTahun >= 1) $s4 = 10; 
-    else $s4 = 5;
-    $total4 = $s4 * 15; // 15% FIXED ✅
+    elseif ($lamaTahun >= 0.5) $s4 = 5; // Min 6 bulan
+    else $s4 = 0; // PERBAIKAN: 0 untuk pelanggan < 6 bulan
+    $total4 = $s4 * 15;
 
     // Total Score: Max = 700 + 600 + 400 + 300 = 2000 poin
     $grandScore = $total1 + $total2 + $total3 + $total4;
 
-    // Credit Limit Classification
-    if ($grandScore <= 400) $limit = rand(0, 5000000);           // 0-5 juta
-    elseif ($grandScore <= 800) $limit = rand(5000000, 20000000);   // 5-20 juta
-    elseif ($grandScore <= 1200) $limit = rand(20000000, 50000000); // 20-50 juta
-    elseif ($grandScore <= 1600) $limit = rand(50000000, 75000000); // 50-75 juta
-    else $limit = rand(75000000, 100000000);                        // 75-100 juta
+    // Credit Limit Classification (Fixed per kategori)
+    if ($grandScore <= 400) $limit = 5000000;        // Rp 5 juta
+    elseif ($grandScore <= 800) $limit = 15000000;   // Rp 15 juta
+    elseif ($grandScore <= 1200) $limit = 30000000;  // Rp 30 juta
+    elseif ($grandScore <= 1600) $limit = 50000000;  // Rp 50 juta
+    else $limit = 100000000;                         // Rp 100 juta
 
     // Return breakdown untuk transparansi
     return [
         'score' => $grandScore, 
         'limit' => $limit,
         'breakdown' => json_encode([
-            'kriteria_1' => ['score' => $s1, 'poin' => $total1, 'label' => 'Rata Transaksi'],
-            'kriteria_2' => ['score' => $s2, 'poin' => $total2, 'label' => 'Keterlambatan'],
-            'kriteria_3' => ['score' => $s3, 'poin' => $total3, 'label' => 'Frekuensi'],
-            'kriteria_4' => ['score' => $s4, 'poin' => $total4, 'label' => 'Lama Pelanggan']
+            'kriteria_1' => ['score' => $s1, 'poin' => $total1, 'label' => 'Rata Transaksi', 'bobot' => 35],
+            'kriteria_2' => ['score' => $s2, 'poin' => $total2, 'label' => 'Keterlambatan', 'bobot' => 30],
+            'kriteria_3' => ['score' => $s3, 'poin' => $total3, 'label' => 'Frekuensi', 'bobot' => 20],
+            'kriteria_4' => ['score' => $s4, 'poin' => $total4, 'label' => 'Lama Pelanggan', 'bobot' => 15]
         ])
     ];
 }
@@ -327,6 +356,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     <div style="flex:1">
                         <small>Rata-rata Transaksi (Juta):</small>
                         <select name="rata_transaksi" required>
+                            <option value="0">Belum Ada Transaksi</option>
                             <option value="10">< 25 Juta (Kecil)</option>
                             <option value="30">25 - 50 Juta (Sedang)</option>
                             <option value="60">50 - 100 Juta (Besar)</option>
@@ -348,6 +378,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     <div style="flex:1">
                         <small>Frekuensi Belanja/Bulan:</small>
                         <select name="freq_transaksi" required>
+                            <option value="0">Belum Ada Transaksi</option>
                             <option value="1">< 2x (Jarang)</option>
                             <option value="3">2 - 5x (Cukup)</option>
                             <option value="6">5 - 10x (Sering)</option>
@@ -365,7 +396,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     </div>
                 </div>
 
-                <button type="submit" style="width:100%; margin-top:10px; background: #0056b3;">HITUNG SKOR & SIMPAN DATA</button>
+                <button type="submit" style="width:100%; margin-top:10px; background: #333; color: #fff; border: 2px solid #000;">HITUNG SKOR & SIMPAN DATA</button>
             </form>
 
             <table>
@@ -386,7 +417,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             <small style="color: #666;"><?= htmlspecialchars($c['address'] ?? '-') ?></small>
                         </td>
                         <td>
-                            <span class="badge" style="background:#667eea; color:#fff; padding: 5px 10px; border-radius: 4px;">
+                            <span class="badge" style="background:#fff; color:#333; padding: 5px 10px; border: 2px solid #333;">
                                 <?= $c['total_score'] ?? 0 ?> poin
                             </span>
                         </td>
@@ -397,7 +428,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         <td>
                             <a href="customer_profile.php?id=<?= $c['id'] ?>" 
                                class="badge" 
-                               style="background:#28a745; color:white; text-decoration:none; padding: 5px 10px; border-radius: 4px; margin-right: 5px;">
+                               style="background:#333; color:white; text-decoration:none; padding: 5px 10px; border: 2px solid #000; margin-right: 5px;">
                                 📊 Detail
                             </a>
                             <?php if($c['current_debt'] == 0): ?>
@@ -482,7 +513,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     <input type="number" name="pajak_tahunan" id="car_pajak" placeholder="Biaya Pajak (Rp)" required style="flex:1">
                     <input type="date" name="tgl_pajak" id="car_tgl" required style="flex:1" title="Tanggal Jatuh Tempo">
                 </div>
-                <button type="submit" id="btnSaveCar" style="width:100%; background: #0056b3;">SIMPAN DATA KENDARAAN</button>
+                <button type="submit" id="btnSaveCar" style="width:100%; background: #333; color: #fff; border: 2px solid #000;">SIMPAN DATA KENDARAAN</button>
             </form>
 
             <table>

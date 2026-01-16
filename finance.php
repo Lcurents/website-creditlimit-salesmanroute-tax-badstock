@@ -178,7 +178,7 @@ $recentPayments = $db->query(
                 $overdueOrders = $db->query("SELECT COUNT(*) as total FROM orders WHERE status = 'DELIVERED' AND due_date < DATE('now')")[0]['total'] ?? 0;
                 ?>
                 
-                <div style="margin-bottom: 15px; padding: 15px; background: #fff3cd; border-radius: 5px;">
+                <div style="margin-bottom: 15px; padding: 15px; background: #fff; border: 2px solid #333;">
                     <div style="font-size: 12px; color: #856404; margin-bottom: 5px;">Total Piutang Tertunggak:</div>
                     <div style="font-size: 28px; font-weight: bold; color: #856404;"><?= rupiah($totalDebt) ?></div>
                 </div>

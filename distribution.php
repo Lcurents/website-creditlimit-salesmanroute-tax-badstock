@@ -274,7 +274,7 @@ $orders = $db->query("SELECT o.*, c.name as customer_name FROM orders o LEFT JOI
                     <?php endforeach; ?>
                 </select>
                 <input type="number" name="qty[]" class="q-input" placeholder="Qty" oninput="updateCalculation()" required style="width:100px; padding:8px;" min="1">
-                <button type="button" onclick="this.parentElement.remove(); updateCalculation()" style="background:#dc3545; color:#fff; padding:8px 15px; border:none; cursor:pointer;">Hapus</button>
+                <button type="button" onclick="this.parentElement.remove(); updateCalculation()" style="background:#333; color:#fff; padding:8px 15px; border:none; cursor:pointer;">Hapus</button>
             `;
             div.innerHTML = html;
             container.appendChild(div);
@@ -328,7 +328,7 @@ $orders = $db->query("SELECT o.*, c.name as customer_name FROM orders o LEFT JOI
                     </div>
                 </div>
 
-                <button type="button" onclick="addRow()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 20px;">
+                <button type="button" onclick="addRow()" style="background: #333; color: white; padding: 10px 20px; border: none; cursor: pointer; margin-bottom: 20px;">
                     ➕ Tambah Barang Lain
                 </button>
 
@@ -389,7 +389,7 @@ $orders = $db->query("SELECT o.*, c.name as customer_name FROM orders o LEFT JOI
                                 <form method="POST" onsubmit="return confirm('Barang sudah sampai?');" style="margin-top:5px;">
                                     <input type="hidden" name="action" value="confirm_delivery">
                                     <input type="hidden" name="order_id" value="<?= $o['id'] ?>">
-                                    <button type="submit" style="background:#ffc107; color:#333; padding:6px 12px; border:none; border-radius:3px; cursor:pointer; font-size:11px;">
+                                    <button type="submit" style="background:#fff; color:#333; padding:6px 12px; border:2px solid #333; cursor:pointer; font-size:11px;">
                                         ✓ CONFIRM
                                     </button>
                                 </form>

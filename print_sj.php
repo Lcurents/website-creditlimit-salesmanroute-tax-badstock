@@ -109,7 +109,7 @@ $items = $db->query(
 
     <div class="no-print" style="text-align: center; margin-top: 20px;">
         <button onclick="window.print()" style="padding: 10px 30px; background: #28a745; color: white; border: none; cursor: pointer;">🖨️ CETAK</button>
-        <button onclick="window.close()" style="padding: 10px 30px; background: #dc3545; color: white; border: none; cursor: pointer; margin-left: 10px;">✖ TUTUP</button>
+        <button onclick="window.close()" style="padding: 10px 30px; background: #333; color: white; border: none; cursor: pointer; margin-left: 10px;">✖ TUTUP</button>
     </div>
 </body>
 </html>

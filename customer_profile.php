@@ -44,12 +44,12 @@ $onTimePayment = $totalOrders > 0 ? round(($paidOrders / $totalOrders) * 100, 1)
     <link rel="stylesheet" href="style.css">
     <style>
         .profile-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #333;
             color: white;
             padding: 30px;
-            border-radius: 10px;
+            border: 3px solid #000;
             margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 5px 5px 0px #000;
         }
         .profile-grid {
             display: grid;
@@ -82,7 +82,7 @@ $onTimePayment = $totalOrders > 0 ? round(($paidOrders / $totalOrders) * 100, 1)
             padding: 10px;
             margin: 5px 0;
             background: white;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid #333;
         }
         .score-bar {
             width: 100%;
@@ -94,7 +94,7 @@ $onTimePayment = $totalOrders > 0 ? round(($paidOrders / $totalOrders) * 100, 1)
         }
         .score-fill {
             height: 100%;
-            background: linear-gradient(90deg, #667eea, #764ba2);
+            background: #333;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -105,9 +105,9 @@ $onTimePayment = $totalOrders > 0 ? round(($paidOrders / $totalOrders) * 100, 1)
         .stat-card {
             text-align: center;
             padding: 15px;
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-            border-radius: 8px;
+            background: #fff;
+            color: #333;
+            border: 3px solid #333;
             margin: 10px 0;
         }
         .stat-value {
@@ -124,11 +124,11 @@ $onTimePayment = $totalOrders > 0 ? round(($paidOrders / $totalOrders) * 100, 1)
             justify-content: space-between;
             margin: 10px 0;
             padding: 10px;
-            background: #e3f2fd;
-            border-radius: 6px;
+            background: #f8f9fa;
+            border: 2px solid #ddd;
         }
         .credit-info strong {
-            color: #1976d2;
+            color: #333;
         }
         table {
             width: 100%;
@@ -189,22 +189,167 @@ $onTimePayment = $totalOrders > 0 ? round(($paidOrders / $totalOrders) * 100, 1)
                     </div>
                 </div>
 
+                <!-- FORMULA EXPLANATION -->
+                <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border: 2px solid #333;">
+                    <strong>📐 Rumus Perhitungan Smart Scoring:</strong>
+                    <div style="margin-top: 10px; font-size: 13px; line-height: 1.8;">
+                        <div style="margin: 8px 0; padding: 8px; background: #fff; border-left: 3px solid #333;">
+                            <strong>S1 (Frekuensi Order):</strong><br>
+                            • 0-2 order/bulan = 0 poin<br>
+                            • 3-5 order/bulan = 10 poin<br>
+                            • 6+ order/bulan = 20 poin<br>
+                            <em>Bobot: 35% → Poin = Skor × 35</em>
+                        </div>
+                        <div style="margin: 8px 0; padding: 8px; background: #fff; border-left: 3px solid #333;">
+                            <strong>S2 (Nilai Transaksi):</strong><br>
+                            • < Rp 5 juta/order = 0 poin<br>
+                            • Rp 5-15 juta/order = 10 poin<br>
+                            • > Rp 15 juta/order = 20 poin<br>
+                            <em>Bobot: 30% → Poin = Skor × 30</em>
+                        </div>
+                        <div style="margin: 8px 0; padding: 8px; background: #fff; border-left: 3px solid #333;">
+                            <strong>S3 (Riwayat Pembayaran):</strong><br>
+                            • On-time < 50% = 0 poin<br>
+                            • On-time 50-79% = 10 poin<br>
+                            • On-time ≥ 80% = 20 poin<br>
+                            <em>Bobot: 20% → Poin = Skor × 20</em>
+                        </div>
+                        <div style="margin: 8px 0; padding: 8px; background: #fff; border-left: 3px solid #333;">
+                            <strong>S4 (Lama Kerjasama):</strong><br>
+                            • < 6 bulan = 0 poin<br>
+                            • 6-12 bulan = 10 poin<br>
+                            • > 1 tahun = 20 poin<br>
+                            <em>Bobot: 15% → Poin = Skor × 15</em>
+                        </div>
+                        <div style="margin-top: 12px; padding: 10px; background: #333; color: #fff; text-align: center; font-weight: bold;">
+                            TOTAL SKOR = S1×35 + S2×30 + S3×20 + S4×15<br>
+                            (Maksimal: 20×35 + 20×30 + 20×20 + 20×15 = 2000 poin)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MAPPING SKOR KE CREDIT LIMIT -->
+                <div style="margin: 20px 0; padding: 15px; background: #fff; border: 3px solid #333;">
+                    <strong style="font-size: 15px;">🎯 Konversi Skor ke Credit Limit:</strong>
+                    <div style="margin: 15px 0; padding: 12px; background: #f8f9fa; border-left: 4px solid #333;">
+                        <strong>📋 Formula Perhitungan:</strong><br>
+                        <code style="background: #fff; padding: 3px 8px; border: 1px solid #ddd; font-family: monospace;">
+                            Credit Limit = NILAI TETAP berdasarkan kategori skor
+                        </code>
+                        <br><small style="color: #666;">* Setiap range skor mendapat credit limit yang sudah ditentukan</small>
+                    </div>
+                    <table style="width: 100%; margin-top: 15px; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #333; color: #fff;">
+                                <th style="padding: 10px; border: 2px solid #000;">Range Skor</th>
+                                <th style="padding: 10px; border: 2px solid #000;">Kategori</th>
+                                <th style="padding: 10px; border: 2px solid #000;">Credit Limit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="background: #f8f9fa;">
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">0 - 400</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">SANGAT RENDAH</td>
+                                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Rp 5.000.000</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">401 - 800</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">RENDAH</td>
+                                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Rp 15.000.000</td>
+                            </tr>
+                            <tr style="background: #f8f9fa;">
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">801 - 1200</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">SEDANG</td>
+                                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Rp 30.000.000</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">1201 - 1600</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">TINGGI</td>
+                                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Rp 50.000.000</td>
+                            </tr>
+                            <tr style="background: #f8f9fa;">
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">1601 - 2000</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">SANGAT TINGGI</td>
+                                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Rp 100.000.000</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <?php
+                    $current_score = $customer['total_score'];
+                    $current_category = '';
+                    $current_range = '';
+                    if ($current_score <= 400) {
+                        $current_category = 'SANGAT RENDAH';
+                        $current_range = '0-400';
+                    } elseif ($current_score <= 800) {
+                        $current_category = 'RENDAH';
+                        $current_range = '401-800';
+                    } elseif ($current_score <= 1200) {
+                        $current_category = 'SEDANG';
+                        $current_range = '801-1200';
+                    } elseif ($current_score <= 1600) {
+                        $current_category = 'TINGGI';
+                        $current_range = '1201-1600';
+                    } else {
+                        $current_category = 'SANGAT TINGGI';
+                        $current_range = '1601-2000';
+                    }
+                    ?>
+                    <div style="margin-top: 15px; padding: 12px; background: #333; color: #fff; border: 3px solid #000;">
+                        <strong style="font-size: 14px;">
+                            ✓ Skor Anda: <?= $current_score ?> poin → Range: <?= $current_range ?> (<?= $current_category ?>)<br>
+                            → Credit Limit Diberikan: <?= rupiah($customer['credit_limit']) ?>
+                        </strong>
+                    </div>
+                    <div style="margin-top: 10px; padding: 10px; background: #fff; border: 2px dashed #333; font-size: 13px;">
+                        💡 <strong>Contoh:</strong> Skor 950 masuk range <strong>801-1200 (SEDANG)</strong>, 
+                        sehingga otomatis mendapat credit limit tetap sebesar <strong>Rp 30.000.000</strong>.
+                    </div>
+                </div>
+
                 <?php if ($breakdown): ?>
                 <div class="score-breakdown">
-                    <strong>📋 Breakdown Perhitungan:</strong>
+                    <strong>📋 Breakdown Perhitungan Customer Ini:</strong>
+                    
+                    <?php 
+                    $totalPoints = array_sum(array_column($breakdown, 'poin'));
+                    if ($totalPoints == 0): 
+                    ?>
+                    <div style="margin: 15px 0; padding: 15px; background: #fff3cd; border: 2px solid #333;">
+                        <strong>⚠️ PELANGGAN BARU</strong><br>
+                        <p style="margin: 10px 0; line-height: 1.6;">
+                            Anda adalah pelanggan baru yang belum memiliki riwayat transaksi. 
+                            Credit limit awal diberikan sebesar <strong>Rp 5.000.000</strong> 
+                            sebagai masa percobaan.
+                        </p>
+                        <p style="margin: 10px 0; line-height: 1.6;">
+                            Untuk meningkatkan credit limit, Anda perlu:<br>
+                            • Melakukan minimal 3 transaksi<br>
+                            • Membayar tepat waktu<br>
+                            • Meningkatkan nilai dan frekuensi transaksi
+                        </p>
+                    </div>
+                    <?php else: ?>
                     
                     <?php foreach ($breakdown as $key => $detail): ?>
                     <div class="score-item">
                         <div>
                             <strong><?= $detail['label'] ?></strong>
                             <br>
-                            <small>Skor: <?= $detail['score'] ?>/20</small>
+                            <small>Skor: <?= $detail['score'] ?>/20 × Bobot <?= $detail['bobot'] ?> = <?= $detail['poin'] ?> poin</small>
                         </div>
-                        <div style="font-size: 18px; font-weight: bold; color: #667eea;">
+                        <div style="font-size: 18px; font-weight: bold; color: #333;">
                             <?= $detail['poin'] ?> poin
                         </div>
                     </div>
                     <?php endforeach; ?>
+                    
+                    <div style="margin-top: 15px; padding: 12px; background: #333; color: #fff; text-align: center; border: 3px solid #000;">
+                        <strong style="font-size: 16px;">
+                            TOTAL: <?= array_sum(array_column($breakdown, 'poin')) ?> poin
+                        </strong>
+                    </div>
+                    <?php endif; ?>
                 </div>
                 <?php else: ?>
                 <p style="color: #999; margin-top: 15px;">
@@ -224,12 +369,12 @@ $onTimePayment = $totalOrders > 0 ? round(($paidOrders / $totalOrders) * 100, 1)
                 
                 <div class="credit-info">
                     <span>Total Hutang Saat Ini:</span>
-                    <strong style="color: #dc3545;"><?= rupiah($customer['current_debt']) ?></strong>
+                    <strong style="color: #333;"><?= rupiah($customer['current_debt']) ?></strong>
                 </div>
                 
-                <div class="credit-info" style="background: #d4edda; border: 2px solid #28a745;">
+                <div class="credit-info" style="background: #fff; border: 3px solid #333;">
                     <span><strong>Sisa Limit Tersedia:</strong></span>
-                    <strong style="color: #28a745; font-size: 20px;">
+                    <strong style="color: #333; font-size: 20px;">
                         <?= rupiah($customer['credit_limit'] - $customer['current_debt']) ?>
                     </strong>
                 </div>
@@ -249,7 +394,7 @@ $onTimePayment = $totalOrders > 0 ? round(($paidOrders / $totalOrders) * 100, 1)
                     </div>
                 </div>
 
-                <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 6px;">
+                <div style="margin-top: 20px; padding: 15px; background: #fff; border: 2px solid #333;">
                     <strong>📈 Statistik:</strong>
                     <div style="margin-top: 10px;">
                         <div>Total Order: <strong><?= $totalOrders ?></strong></div>

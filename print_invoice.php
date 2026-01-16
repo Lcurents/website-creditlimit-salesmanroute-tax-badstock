@@ -189,7 +189,7 @@ $items = $db->query(
         </div>
 
         <!-- PAYMENT INFO -->
-        <div style="margin-top: 20px; padding: 10px; background: #fff3cd; border: 1px solid #ffc107;">
+        <div style="margin-top: 20px; padding: 10px; background: #fff; border: 2px solid #333;">
             <strong>Status Pembayaran:</strong> <?= status_badge($order['status']) ?><br>
             <?php if ($order['paid_date']): ?>
                 <strong>Tanggal Bayar:</strong> <?= tanggal_indo($order['paid_date']) ?>
@@ -225,7 +225,7 @@ $items = $db->query(
         <button onclick="window.print()" style="padding: 10px 30px; background: #333; color: white; border: none; cursor: pointer; font-size: 16px; border-radius: 5px;">
             🖨️ CETAK FAKTUR
         </button>
-        <button onclick="window.close()" style="padding: 10px 30px; background: #dc3545; color: white; border: none; cursor: pointer; font-size: 16px; border-radius: 5px; margin-left: 10px;">
+        <button onclick="window.close()" style="padding: 10px 30px; background: #333; color: white; border: none; cursor: pointer; font-size: 16px; margin-left: 10px;">
             ✖ TUTUP
         </button>
     </div>
