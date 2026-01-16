@@ -1,44 +1,49 @@
 <?php
+/**
+ * NEW DASHBOARD with SQLite
+ * Improved Performance & Security
+ */
 session_start();
-if (!isset($_SESSION['user'])) { header("Location: login.php"); exit; }
-$user = $_SESSION['user'];
+require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/includes/functions.php';
 
-// LOAD SEMUA DATA
-$orders = json_decode(file_get_contents('data/orders.json'), true);
-$customers = json_decode(file_get_contents('data/customers.json'), true);
+$user = check_login();
+$db = Database::getInstance();
 
-// VARIABEL DASHBOARD
+// === DASHBOARD STATISTICS ===
 $today = date("Y-m-d");
-$omsetHariIni = 0;
-$orderHariIni = 0;
-$pendingCount = 0;
-$totalPiutang = 0;
 
-// LOGIC HITUNG ORDER
-foreach ($orders as $o) {
-    // Cek Omset Hari Ini (Berdasarkan tanggal)
-    if (strpos($o['date'], $today) === 0) {
-        $orderHariIni++; // Hitung jumlah transaksi
-        if ($o['status'] !== 'ON HOLD') {
-            $omsetHariIni += $o['total']; // Hitung duit (kecuali yang hold)
-        }
-    }
-    // Cek Pending Approval
-    if ($o['status'] === 'ON HOLD') {
-        $pendingCount++;
-    }
-}
+// 1. Omset Hari Ini
+$sql_omset = "SELECT COUNT(*) as total_orders, SUM(total_amount) as total_omset 
+              FROM orders 
+              WHERE DATE(order_date) = :today AND status != 'ON HOLD'";
+$omset_data = $db->query($sql_omset, ['today' => $today])[0];
+$omsetHariIni = $omset_data['total_omset'] ?? 0;
+$orderHariIni = $omset_data['total_orders'] ?? 0;
 
-// LOGIC HITUNG PIUTANG (Uang macet di luar)
-foreach ($customers as $c) {
-    $totalPiutang += $c['debt'];
-}
+// 2. Order Pending Approval
+$sql_pending = "SELECT COUNT(*) as total FROM orders WHERE status = 'ON HOLD'";
+$pendingCount = $db->query($sql_pending)[0]['total'];
+
+// 3. Total Piutang
+$sql_piutang = "SELECT SUM(current_debt) as total_debt FROM customers";
+$totalPiutang = $db->query($sql_piutang)[0]['total_debt'] ?? 0;
+
+// 4. Recent Activities (5 terakhir)
+$sql_recent = "SELECT o.*, c.name as customer_name 
+               FROM orders o 
+               LEFT JOIN customers c ON o.customer_id = c.id 
+               ORDER BY o.order_date DESC 
+               LIMIT 5";
+$recentOrders = $db->query($sql_recent);
 ?>
 
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <title>Dashboard Distribusi</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Distribusi App</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -46,38 +51,45 @@ foreach ($customers as $c) {
 
     <div class="content">
         <div class="header-box">
-            <h1>Dashboard Eksekutif</h1>
-            <p>Ringkasan performa bisnis per <b><?= date("d F Y") ?></b></p>
+            <h1>📊 Dashboard Eksekutif</h1>
+            <p>Ringkasan performa bisnis per <b><?= tanggal_indo(date("Y-m-d")) ?></b></p>
         </div>
 
-        <div style="display: flex; gap: 20px; margin-bottom: 20px;">
-            <div class="card" style="flex: 1; text-align: center; border-left: 5px solid green;">
-                <h3>Omset Hari Ini</h3>
-                <h1 style="font-size: 36px; margin: 10px 0; color: green;">
-                    Rp <?= number_format($omsetHariIni) ?>
+        <!-- CARDS STATISTIK -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px;">
+            
+            <!-- Card 1: Omset -->
+            <div class="card" style="text-align: center; border-left: 5px solid #28a745;">
+                <h3 style="color: #666; margin-bottom: 10px;">💰 Omset Hari Ini</h3>
+                <h1 style="font-size: 36px; margin: 10px 0; color: #28a745;">
+                    <?= rupiah($omsetHariIni) ?>
                 </h1>
-                <p><?= $orderHariIni ?> Transaksi Masuk</p>
+                <p style="color: #999;"><?= $orderHariIni ?> Transaksi Masuk</p>
             </div>
 
-            <div class="card" style="flex: 1; text-align: center; border-left: 5px solid red;">
-                <h3>Butuh Approval</h3>
-                <h1 style="font-size: 36px; margin: 10px 0; color: <?= $pendingCount > 0 ? 'red' : '#333' ?>;">
+            <!-- Card 2: Pending -->
+            <div class="card" style="text-align: center; border-left: 5px solid #dc3545;">
+                <h3 style="color: #666; margin-bottom: 10px;">⏳ Butuh Approval</h3>
+                <h1 style="font-size: 36px; margin: 10px 0; color: <?= $pendingCount > 0 ? '#dc3545' : '#333' ?>;">
                     <?= $pendingCount ?>
                 </h1>
-                <p>Order Over Limit</p>
+                <p style="color: #999;">Order Over Limit</p>
             </div>
 
-            <div class="card" style="flex: 1; text-align: center; border-left: 5px solid orange;">
-                <h3>Total Piutang Toko</h3>
-                <h1 style="font-size: 36px; margin: 10px 0; color: orange;">
-                    Rp <?= number_format($totalPiutang) ?>
+            <!-- Card 3: Piutang -->
+            <div class="card" style="text-align: center; border-left: 5px solid #ffc107;">
+                <h3 style="color: #666; margin-bottom: 10px;">📋 Total Piutang</h3>
+                <h1 style="font-size: 36px; margin: 10px 0; color: #ffc107;">
+                    <?= rupiah($totalPiutang) ?>
                 </h1>
-                <p>Uang di Pelanggan</p>
+                <p style="color: #999;">Uang di Pelanggan</p>
             </div>
+
         </div>
 
+        <!-- TABLE: RECENT ACTIVITIES -->
         <div class="card">
-            <h3>5 Aktivitas Order Terakhir</h3>
+            <h3>🕒 5 Aktivitas Order Terakhir</h3>
             <table>
                 <thead>
                     <tr>
@@ -88,21 +100,44 @@ foreach ($customers as $c) {
                     </tr>
                 </thead>
                 <tbody>
-                    <?php 
-                    // Ambil 5 data teratas saja
-                    $recent = array_slice($orders, 0, 5);
-                    foreach ($recent as $r): 
-                    ?>
-                    <tr>
-                        <td><?= $r['date'] ?></td>
-                        <td><?= $r['customer'] ?></td>
-                        <td><span class="badge"><?= $r['status'] ?></span></td>
-                        <td>Rp <?= number_format($r['total']) ?></td>
-                    </tr>
-                    <?php endforeach; ?>
+                    <?php if (empty($recentOrders)): ?>
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: #999;">Belum ada aktivitas hari ini</td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($recentOrders as $order): ?>
+                        <tr>
+                            <td><?= date('d/m/Y H:i', strtotime($order['order_date'])) ?></td>
+                            <td><?= $order['customer_name'] ?></td>
+                            <td><?= status_badge($order['status']) ?></td>
+                            <td><strong><?= rupiah($order['total_amount']) ?></strong></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
+
+        <!-- QUICK LINKS -->
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 20px;">
+            <a href="distribution.php" class="card" style="text-decoration: none; color: inherit; transition: transform 0.2s;">
+                <h4>📦 Buat Order Baru</h4>
+                <p style="color: #999; font-size: 13px;">Input pesanan dari pelanggan</p>
+            </a>
+            
+            <a href="finance.php" class="card" style="text-decoration: none; color: inherit; transition: transform 0.2s;">
+                <h4>💵 Input Pembayaran</h4>
+                <p style="color: #999; font-size: 13px;">Terima setoran dari sales</p>
+            </a>
+        </div>
+
     </div>
+
+    <style>
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+    </style>
 </body>
 </html>

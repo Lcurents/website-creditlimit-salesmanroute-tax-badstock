@@ -1,158 +1,229 @@
 <?php
+/**
+ * NEW DISTRIBUTION PAGE with SQLite
+ * Multi-item Order with Real-time Credit Limit Check
+ */
 session_start();
-if (!isset($_SESSION['user'])) { header("Location: login.php"); exit; }
-$user = $_SESSION['user'];
+require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/includes/functions.php';
 
-$customers = json_decode(file_get_contents('data/customers.json'), true);
-$products = json_decode(file_get_contents('data/products.json'), true);
-$orders = json_decode(file_get_contents('data/orders.json'), true);
+$user = check_login();
+$db = Database::getInstance();
+
+$msg = '';
+$msg_type = 'success';
 
 // ==========================================
-// 1. ACTION: CREATE ORDER (MULTI ITEM)
+// 1. HANDLE CREATE ORDER
 // ==========================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] == 'create_order') {
-    if ($user['role'] !== 'FAKTURIS') { echo "<script>alert('Akses Ditolak!');</script>"; }
-    else {
-        $custId = $_POST['customer_id'];
+    
+    if ($user['role'] !== 'FAKTURIS') {
+        $msg = 'Akses ditolak! Hanya Fakturis yang bisa input order.';
+        $msg_type = 'danger';
+    } else {
+        $customerId = (int)$_POST['customer_id'];
+        $productIds = $_POST['product_id'];
+        $quantities = $_POST['qty'];
         
-        // Ambil Array Barang & Qty
-        $postProds = $_POST['product_id']; // Array
-        $postQtys = $_POST['qty'];         // Array
-
-        // 1. Hitung Total & Validasi Stok
-        $grandTotal = 0;
-        $itemsSummary = [];
-        $stokAman = true;
+        $db->beginTransaction();
         
-        // Loop untuk cek harga & stok
-        foreach ($postProds as $index => $pId) {
-            $qty = (int)$postQtys[$index];
-            if ($qty > 0) {
-                $key = array_search($pId, array_column($products, 'id'));
-                $prodData = $products[$key];
-                
-                if ($prodData['stock'] < $qty) {
-                    $stokAman = false;
-                    echo "<script>alert('Stok kurang untuk: " . $prodData['name'] . "');</script>";
-                    break;
-                }
-
-                $subtotal = $prodData['price'] * $qty;
-                $grandTotal += $subtotal;
-                $itemsSummary[] = $prodData['name'] . " (x$qty)";
-            }
-        }
-
-        if ($stokAman && $grandTotal > 0) {
-            // 2. Cek Credit Limit
-            $custKey = array_search($custId, array_column($customers, 'id'));
-            $selectedCust = $customers[$custKey];
+        try {
+            // 1. Validate & Calculate Total
+            $grandTotal = 0;
+            $orderItems = [];
             
-            $futureDebt = $selectedCust['debt'] + $grandTotal;
-            
-            if ($futureDebt > $selectedCust['limit']) {
-                $status = "ON HOLD";
-                $msg = "Limit Jebol! Masuk antrian Approval.";
-            } else {
-                $status = "APPROVED";
-                $msg = "Order Berhasil & Approved.";
+            foreach ($productIds as $index => $productId) {
+                $qty = (int)$quantities[$index];
                 
-                // Tambah Hutang Customer
-                $customers[$custKey]['debt'] += $grandTotal;
-
-                // Potong Stok (Loop lagi untuk eksekusi)
-                foreach ($postProds as $index => $pId) {
-                    $qty = (int)$postQtys[$index];
-                    if($qty > 0){
-                        $pkey = array_search($pId, array_column($products, 'id'));
-                        $products[$pkey]['stock'] -= $qty;
+                if ($qty > 0) {
+                    // Get product data
+                    $product = $db->query("SELECT * FROM products WHERE id = :id", ['id' => $productId])[0];
+                    
+                    // Check stock
+                    if ($product['stock'] < $qty) {
+                        throw new Exception("Stok tidak cukup untuk produk: {$product['name']}");
                     }
+                    
+                    $subtotal = $product['price'] * $qty;
+                    $grandTotal += $subtotal;
+                    
+                    $orderItems[] = [
+                        'product_id' => $productId,
+                        'product_name' => $product['name'],
+                        'qty' => $qty,
+                        'unit_price' => $product['price'],
+                        'subtotal' => $subtotal
+                    ];
+                }
+            }
+            
+            if (empty($orderItems)) {
+                throw new Exception("Tidak ada item yang dipilih!");
+            }
+            
+            // 2. Check Credit Limit
+            $customer = $db->query("SELECT * FROM customers WHERE id = :id", ['id' => $customerId])[0];
+            $futureDebt = $customer['current_debt'] + $grandTotal;
+            
+            if ($futureDebt > $customer['credit_limit']) {
+                $status = 'ON HOLD';
+                $msg = "⚠️ Order dibuat tapi ON HOLD karena melebihi limit kredit. Butuh approval Finance.";
+                $msg_type = 'warning';
+            } else {
+                $status = 'APPROVED';
+                
+                // Update customer debt
+                $db->execute("UPDATE customers SET current_debt = current_debt + :amount WHERE id = :id", [
+                    'amount' => $grandTotal,
+                    'id' => $customerId
+                ]);
+                
+                // Update product stock
+                foreach ($orderItems as $item) {
+                    $db->execute("UPDATE products SET stock = stock - :qty WHERE id = :id", [
+                        'qty' => $item['qty'],
+                        'id' => $item['product_id']
+                    ]);
                 }
                 
-                file_put_contents('data/customers.json', json_encode($customers, JSON_PRETTY_PRINT));
-                file_put_contents('data/products.json', json_encode($products, JSON_PRETTY_PRINT));
+                $msg = "✅ Order berhasil dibuat dan langsung APPROVED!";
+                $msg_type = 'success';
             }
-
-            // 3. Simpan Order (Gabungkan nama barang jadi string panjang)
-            $newOrder = [
-                "id" => time(),
-                "date" => date("Y-m-d H:i"),
-                "due_date" => date("Y-m-d", strtotime("+7 days")), // DEADLINE 1 MINGGU
-                "paid_date" => null, // Belum bayar
-                "customer_id" => $custId,
-                "customer" => $selectedCust['name'],
-                "product_id" => "MULTI", // Penanda multi item
-                "product" => implode(", ", $itemsSummary), // Gabung nama barang
-                "qty" => count($itemsSummary) . " Jenis", 
-                "total" => $grandTotal,
-                "status" => $status
-            ];
-            array_unshift($orders, $newOrder);
-            file_put_contents('data/orders.json', json_encode($orders, JSON_PRETTY_PRINT));
-        }
-    }
-}
-
-// ... (Action Approve & Confirm Delivery tetap sama seperti sebelumnya) ...
-// Saya singkat disini agar kode tidak kepanjangan, 
-// SILAKAN COPY-PASTE BAGIAN APPROVE & CONFIRM DARI KODE SEBELUMNYA DI BAWAH SINI
-// ...
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] == 'approve_order') {
-    // ... Copy logika approve dari file sebelumnya ...
-    // Note: Pastikan update potong stok di logic approve juga support multi-item jika mau sempurna,
-    // tapi untuk prototype, logika approve sederhana yg menambah hutang saja sudah cukup.
-     if ($user['role'] !== 'AR_FINANCE') { echo "<script>alert('Hanya Finance!');</script>"; }
-    else {
-        $orderId = $_POST['order_id'];
-        $ordKey = array_search($orderId, array_column($orders, 'id'));
-        if ($orders[$ordKey]['status'] === 'ON HOLD') {
-            $orders[$ordKey]['status'] = 'APPROVED';
-            $custKey = array_search($orders[$ordKey]['customer_id'], array_column($customers, 'id'));
-            $customers[$custKey]['debt'] += $orders[$ordKey]['total'];
-            // (Disini idealnya kita potong stok juga, tapi karena data produk tidak disimpan detail di json order, 
-            // kita asumsikan stok dipotong manual atau logic ini disederhanakan dulu)
             
-            file_put_contents('data/orders.json', json_encode($orders, JSON_PRETTY_PRINT));
-            file_put_contents('data/customers.json', json_encode($customers, JSON_PRETTY_PRINT));
+            // 3. Insert Order
+            $dueDate = date('Y-m-d', strtotime('+7 days'));
+            
+            $db->execute("INSERT INTO orders (customer_id, total_amount, status, due_date, created_by) 
+                          VALUES (:customer_id, :total, :status, :due_date, :created_by)", [
+                'customer_id' => $customerId,
+                'total' => $grandTotal,
+                'status' => $status,
+                'due_date' => $dueDate,
+                'created_by' => $user['id']
+            ]);
+            
+            $orderId = $db->lastInsertId();
+            
+            // 4. Insert Order Items
+            foreach ($orderItems as $item) {
+                $db->execute("INSERT INTO order_items (order_id, product_id, qty, unit_price, subtotal) 
+                              VALUES (:order_id, :product_id, :qty, :unit_price, :subtotal)", [
+                    'order_id' => $orderId,
+                    'product_id' => $item['product_id'],
+                    'qty' => $item['qty'],
+                    'unit_price' => $item['unit_price'],
+                    'subtotal' => $item['subtotal']
+                ]);
+            }
+            
+            $db->commit();
+            
+        } catch (Exception $e) {
+            $db->rollback();
+            $msg = "❌ Error: " . $e->getMessage();
+            $msg_type = 'danger';
         }
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] == 'confirm_delivery') {
-    $orderId = $_POST['order_id'];
-    $ordKey = array_search($orderId, array_column($orders, 'id'));
-    $orders[$ordKey]['status'] = 'DELIVERED';
-    file_put_contents('data/orders.json', json_encode($orders, JSON_PRETTY_PRINT));
+// ==========================================
+// 2. HANDLE APPROVE ORDER
+// ==========================================
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] == 'approve_order') {
+    
+    if ($user['role'] !== 'AR_FINANCE') {
+        $msg = 'Hanya Finance yang bisa approve order!';
+        $msg_type = 'danger';
+    } else {
+        $orderId = (int)$_POST['order_id'];
+        
+        $db->beginTransaction();
+        
+        try {
+            $order = $db->query("SELECT * FROM orders WHERE id = :id AND status = 'ON HOLD'", ['id' => $orderId])[0];
+            
+            if ($order) {
+                // Update order status
+                $db->execute("UPDATE orders SET status = 'APPROVED', approved_by = :approved_by WHERE id = :id", [
+                    'approved_by' => $user['id'],
+                    'id' => $orderId
+                ]);
+                
+                // Update customer debt
+                $db->execute("UPDATE customers SET current_debt = current_debt + :amount WHERE id = :id", [
+                    'amount' => $order['total_amount'],
+                    'id' => $order['customer_id']
+                ]);
+                
+                // Update stock (get items and reduce)
+                $items = $db->query("SELECT * FROM order_items WHERE order_id = :order_id", ['order_id' => $orderId]);
+                
+                foreach ($items as $item) {
+                    $db->execute("UPDATE products SET stock = stock - :qty WHERE id = :id", [
+                        'qty' => $item['qty'],
+                        'id' => $item['product_id']
+                    ]);
+                }
+                
+                $db->commit();
+                $msg = "✅ Order berhasil di-APPROVE!";
+                $msg_type = 'success';
+            }
+            
+        } catch (Exception $e) {
+            $db->rollback();
+            $msg = "Error: " . $e->getMessage();
+            $msg_type = 'danger';
+        }
+    }
 }
 
+// ==========================================
+// 3. HANDLE CONFIRM DELIVERY
+// ==========================================
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] == 'confirm_delivery') {
+    $orderId = (int)$_POST['order_id'];
+    
+    $db->execute("UPDATE orders SET status = 'DELIVERED' WHERE id = :id AND status = 'APPROVED'", ['id' => $orderId]);
+    
+    $msg = "✅ Status order diubah menjadi DELIVERED!";
+    $msg_type = 'success';
+}
+
+// ==========================================
+// LOAD DATA FOR VIEW
+// ==========================================
+$customers = $db->query("SELECT * FROM customers ORDER BY name");
+$products = $db->query("SELECT * FROM products ORDER BY name");
+$orders = $db->query("SELECT o.*, c.name as customer_name FROM orders o LEFT JOIN customers c ON o.customer_id = c.id ORDER BY o.order_date DESC");
 ?>
 
 <!DOCTYPE html>
 <html lang="id">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Distribusi - Sales Order</title>
     <link rel="stylesheet" href="style.css">
     <script>
-        // DATA DARI PHP KE JS (Untuk Kalkulasi Realtime)
         const products = <?= json_encode($products) ?>;
         const customers = <?= json_encode($customers) ?>;
 
         function updateCalculation() {
-            // 1. Ambil Customer & Limitnya
             let custId = document.getElementById('customer_select').value;
             let limitInfo = document.getElementById('limit_indicator');
             let totalDisplay = document.getElementById('grand_total_display');
             
             if(!custId) { 
                 limitInfo.innerHTML = "Pilih Customer dulu"; 
-                limitInfo.className = "badge";
+                limitInfo.style.backgroundColor = "#ccc";
                 return; 
             }
 
             let cust = customers.find(c => c.id == custId);
-            let sisaLimit = cust.limit - cust.debt;
+            let sisaLimit = cust.credit_limit - cust.current_debt;
 
-            // 2. Hitung Total Belanjaan di Form
             let totalBelanja = 0;
             let rows = document.querySelectorAll('.item-row');
             
@@ -165,17 +236,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 }
             });
 
-            // 3. Tampilkan Total
-            totalDisplay.innerText = "Rp " + totalBelanja.toLocaleString();
+            totalDisplay.innerText = "Rp " + totalBelanja.toLocaleString('id-ID');
 
-            // 4. Bandingkan dengan Limit (Indikator Bahaya)
             if (totalBelanja > sisaLimit) {
-                limitInfo.innerHTML = "⚠️ BAHAYA: OVER LIMIT (Kurang Rp " + (totalBelanja - sisaLimit).toLocaleString() + ")";
-                limitInfo.style.backgroundColor = "red";
+                limitInfo.innerHTML = "⚠️ OVER LIMIT (Kurang Rp " + (totalBelanja - sisaLimit).toLocaleString('id-ID') + ")";
+                limitInfo.style.backgroundColor = "#dc3545";
                 limitInfo.style.color = "white";
             } else {
-                limitInfo.innerHTML = "✅ AMAN (Sisa Limit: Rp " + (sisaLimit - totalBelanja).toLocaleString() + ")";
-                limitInfo.style.backgroundColor = "green";
+                limitInfo.innerHTML = "✅ AMAN (Sisa Limit: Rp " + (sisaLimit - totalBelanja).toLocaleString('id-ID') + ")";
+                limitInfo.style.backgroundColor = "#28a745";
                 limitInfo.style.color = "white";
             }
         }
@@ -184,19 +253,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             let container = document.getElementById('items_container');
             let div = document.createElement('div');
             div.className = 'item-row';
-            div.style.display = 'flex';
-            div.style.gap = '10px';
-            div.style.marginBottom = '10px';
+            div.style.cssText = 'display:flex; gap:10px; margin-bottom:10px;';
             
             let html = `
-                <select name="product_id[]" class="p-select" onchange="updateCalculation()" required style="flex:2">
+                <select name="product_id[]" class="p-select" onchange="updateCalculation()" required style="flex:2; padding:8px;">
                     <option value="">-- Pilih Barang --</option>
                     <?php foreach ($products as $p): ?>
-                        <option value="<?= $p['id'] ?>"><?= $p['name'] ?> (@ <?= number_format($p['price']) ?>)</option>
+                        <option value="<?= $p['id'] ?>"><?= $p['name'] ?> @ <?= rupiah($p['price']) ?> (Stok: <?= $p['stock'] ?>)</option>
                     <?php endforeach; ?>
                 </select>
-                <input type="number" name="qty[]" class="q-input" placeholder="Qty" oninput="updateCalculation()" required style="width:80px">
-                <button type="button" onclick="this.parentElement.remove(); updateCalculation()" style="background:#900; color:#fff">X</button>
+                <input type="number" name="qty[]" class="q-input" placeholder="Qty" oninput="updateCalculation()" required style="width:100px; padding:8px;" min="1">
+                <button type="button" onclick="this.parentElement.remove(); updateCalculation()" style="background:#dc3545; color:#fff; padding:8px 15px; border:none; cursor:pointer;">Hapus</button>
             `;
             div.innerHTML = html;
             container.appendChild(div);
@@ -205,98 +272,120 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 </head>
 <body>
     <?php include 'sidebar.php'; ?>
+    
     <div class="content">
         <div class="header-box">
-            <h1>Distribusi & Logistik</h1>
-            <p>Input Pesanan Multi-Item dengan Cek Limit Realtime.</p>
-            <?php if(isset($msg)) echo "<p style='color:blue'><b>Info: $msg</b></p>"; ?>
+            <h1>📦 Distribusi & Logistik</h1>
+            <p>Input Pesanan Multi-Item dengan Cek Limit Realtime</p>
+            <?php if($msg): echo alert_message($msg, $msg_type); endif; ?>
         </div>
 
         <?php if($user['role'] == 'FAKTURIS'): ?>
         <div class="card" style="border-top: 5px solid #333;">
-            <h3>Input Pesanan Baru (Multi Item)</h3>
+            <h3>➕ Input Pesanan Baru</h3>
             
             <form method="POST">
                 <input type="hidden" name="action" value="create_order">
                 
-                <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px dashed #ccc;">
-                    <label><b>1. Pilih Pelanggan:</b></label><br>
-                    <select name="customer_id" id="customer_select" onchange="updateCalculation()" required style="width:50%">
-                        <option value="">-- Pilih Warung --</option>
+                <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px dashed #ccc;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 8px;">1. Pilih Pelanggan:</label>
+                    <select name="customer_id" id="customer_select" onchange="updateCalculation()" required style="width:100%; padding:10px;">
+                        <option value="">-- Pilih Warung/Toko --</option>
                         <?php foreach ($customers as $c): ?>
-                            <option value="<?= $c['id'] ?>"><?= $c['name'] ?></option>
+                            <option value="<?= $c['id'] ?>">
+                                <?= $c['name'] ?> (Limit: <?= rupiah($c['credit_limit']) ?> | Hutang: <?= rupiah($c['current_debt']) ?>)
+                            </option>
                         <?php endforeach; ?>
                     </select>
                     
-                    <span id="limit_indicator" class="badge" style="margin-left: 10px; padding: 10px;">
+                    <span id="limit_indicator" style="display: inline-block; margin-top: 10px; padding: 10px 15px; background: #ccc; color: white; border-radius: 4px; font-weight: bold;">
                         Pilih pelanggan dulu...
                     </span>
                 </div>
 
-                <label><b>2. Daftar Barang Belanjaan:</b></label>
-                <div id="items_container" style="background: #f4f4f4; padding: 15px; margin-bottom: 15px;">
+                <label style="font-weight: bold; display: block; margin-bottom: 10px;">2. Daftar Barang Belanjaan:</label>
+                <div id="items_container" style="background: #f8f9fa; padding: 15px; margin-bottom: 15px; border-radius: 5px;">
                     <div class="item-row" style="display:flex; gap:10px; margin-bottom:10px;">
-                        <select name="product_id[]" class="p-select" onchange="updateCalculation()" required style="flex:2">
+                        <select name="product_id[]" class="p-select" onchange="updateCalculation()" required style="flex:2; padding:8px;">
                             <option value="">-- Pilih Barang --</option>
                             <?php foreach ($products as $p): ?>
-                                <option value="<?= $p['id'] ?>"><?= $p['name'] ?> (@ <?= number_format($p['price']) ?>)</option>
+                                <option value="<?= $p['id'] ?>"><?= $p['name'] ?> @ <?= rupiah($p['price']) ?> (Stok: <?= $p['stock'] ?>)</option>
                             <?php endforeach; ?>
                         </select>
-                        <input type="number" name="qty[]" class="q-input" placeholder="Qty" oninput="updateCalculation()" required style="width:80px">
-                        <button type="button" disabled style="background:#ccc">X</button>
+                        <input type="number" name="qty[]" class="q-input" placeholder="Qty" oninput="updateCalculation()" required style="width:100px; padding:8px;" min="1">
+                        <button type="button" disabled style="background:#ccc; padding:8px 15px; border:none;">Hapus</button>
                     </div>
                 </div>
 
-                <button type="button" onclick="addRow()" style="background: #555; margin-bottom: 20px;">+ Tambah Barang Lain</button>
+                <button type="button" onclick="addRow()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 20px;">
+                    ➕ Tambah Barang Lain
+                </button>
 
-                <div style="text-align: right; border-top: 2px solid #333; padding-top: 10px;">
-                    <h3>Total Estimasi: <span id="grand_total_display">Rp 0</span></h3>
-                    <button type="submit" style="padding: 15px 30px; font-size: 16px;">PROSES SEMUA PESANAN</button>
+                <div style="text-align: right; border-top: 3px solid #333; padding-top: 15px;">
+                    <h3>Total Estimasi: <span id="grand_total_display" style="color: #28a745;">Rp 0</span></h3>
+                    <button type="submit" style="padding: 15px 40px; font-size: 16px; background: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                        PROSES PESANAN
+                    </button>
                 </div>
             </form>
         </div>
         <?php endif; ?>
 
         <div class="card">
-            <h3>Monitoring Pesanan</h3>
+            <h3>📋 Monitoring Pesanan</h3>
             <table>
                 <thead>
                     <tr>
                         <th>Status</th>
-                        <th>Warung</th>
+                        <th>Pelanggan</th>
                         <th>Detail Barang</th>
                         <th>Total</th>
                         <th>Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($orders as $o): ?>
+                    <?php foreach ($orders as $o): 
+                        // Get order items
+                        $items = $db->query("SELECT oi.*, p.name as product_name FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id WHERE oi.order_id = :id", ['id' => $o['id']]);
+                        $itemsText = [];
+                        foreach ($items as $item) {
+                            $itemsText[] = $item['product_name'] . " (x{$item['qty']})";
+                        }
+                    ?>
                     <tr>
+                        <td><?= status_badge($o['status']) ?></td>
                         <td>
-                            <span class="badge <?= $o['status'] == 'APPROVED' ? 'approved' : ($o['status'] == 'ON HOLD' ? 'hold' : '') ?>" 
-                                  style="<?= $o['status'] == 'DELIVERED' ? 'background:black; color:white;' : '' ?>">
-                                <?= $o['status'] ?>
-                            </span>
+                            <strong><?= $o['customer_name'] ?></strong><br>
+                            <small style="color: #999;"><?= date('d/m/Y H:i', strtotime($o['order_date'])) ?></small>
                         </td>
-                        <td><?= $o['customer'] ?><br><small><?= $o['date'] ?></small></td>
-                        <td style="font-size: 12px; max-width: 300px;"><?= $o['product'] ?></td>
-                        <td>Rp <?= number_format($o['total']) ?></td>
+                        <td style="font-size: 12px; max-width: 300px;">
+                            <?= implode(', ', $itemsText) ?>
+                        </td>
+                        <td><strong><?= rupiah($o['total_amount']) ?></strong></td>
                         <td>
-                             <?php if($o['status'] == 'ON HOLD' && $user['role'] == 'AR_FINANCE'): ?>
-                                <form method="POST">
+                            <?php if($o['status'] == 'ON HOLD' && $user['role'] == 'AR_FINANCE'): ?>
+                                <form method="POST" style="display: inline;">
                                     <input type="hidden" name="action" value="approve_order">
                                     <input type="hidden" name="order_id" value="<?= $o['id'] ?>">
-                                    <button type="submit" style="background:green; font-size:10px;">APPROVE</button>
+                                    <button type="submit" style="background:#28a745; color:white; padding:6px 12px; border:none; border-radius:3px; cursor:pointer; font-size:11px;">
+                                        ✓ APPROVE
+                                    </button>
                                 </form>
                             <?php elseif($o['status'] == 'APPROVED'): ?>
-                                <a href="print_sj.php?id=<?= $o['id'] ?>" target="_blank" class="badge">🖨️ Cetak SJ</a><br>
-                                <form method="POST" onsubmit="return confirm('Barang sampai?');" style="margin-top:5px;">
+                                <a href="print_sj.php?id=<?= $o['id'] ?>" target="_blank" style="background:#007bff; color:white; padding:6px 12px; text-decoration:none; border-radius:3px; font-size:11px;">
+                                    🖨️ Cetak SJ
+                                </a><br>
+                                <form method="POST" onsubmit="return confirm('Barang sudah sampai?');" style="margin-top:5px;">
                                     <input type="hidden" name="action" value="confirm_delivery">
                                     <input type="hidden" name="order_id" value="<?= $o['id'] ?>">
-                                    <button type="submit" style="font-size:10px;">CONFIRM</button>
+                                    <button type="submit" style="background:#ffc107; color:#333; padding:6px 12px; border:none; border-radius:3px; cursor:pointer; font-size:11px;">
+                                        ✓ CONFIRM
+                                    </button>
                                 </form>
                             <?php elseif($o['status'] == 'DELIVERED'): ?>
-                                <a href="print_invoice.php?id=<?= $o['id'] ?>" target="_blank" class="badge" style="background:white; color:black; border:1px solid black;">📄 Faktur</a>
+                                <a href="print_invoice.php?id=<?= $o['id'] ?>" target="_blank" style="background:#fff; color:#333; padding:6px 12px; text-decoration:none; border:1px solid #333; border-radius:3px; font-size:11px;">
+                                    📄 Faktur
+                                </a>
                             <?php endif; ?>
                         </td>
                     </tr>

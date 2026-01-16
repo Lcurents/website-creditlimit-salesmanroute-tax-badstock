@@ -1,0 +1,34 @@
+# Database
+database/*.db
+database/*.db-journal
+
+# Backups
+old_version/
+data_backup/
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+error_log
+
+# Temporary
+tmp/
+temp/
+cache/
+
+# Session
+sessions/
