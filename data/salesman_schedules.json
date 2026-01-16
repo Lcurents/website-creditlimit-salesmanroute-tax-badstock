@@ -70,5 +70,13 @@
         "visit_date": "2025-12-14",
         "sequence": 1,
         "created_by": "Silvia Fakturis"
+    },
+    {
+        "id": 1768553176,
+        "salesman_id": 1,
+        "customer_id": 1764216376,
+        "visit_date": "2026-01-16",
+        "sequence": 1,
+        "created_by": "SYSTEM_14_DAY_AUTO"
     }
 ]
