@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS customers (
     phone TEXT,
     credit_limit REAL DEFAULT 0,
     current_debt REAL DEFAULT 0,
+    total_score INTEGER DEFAULT 0,
+    scoring_breakdown TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -37,8 +39,9 @@ CREATE TABLE IF NOT EXISTS products (
 -- 4. ORDERS TABLE
 CREATE TABLE IF NOT EXISTS orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     due_date DATE,
+    delivered_at TIMESTAMP,
     paid_date DATE,
     customer_id INTEGER NOT NULL,
     total_amount REAL NOT NULL,

@@ -4,9 +4,16 @@ if (!isset($_SESSION['user'])) { header("Location: login.php"); exit; }
 $user = $_SESSION['user'];
 
 // ==========================================
-// 1. LOAD DATA JSON (JANGAN DIUBAH)
+// 1. LOAD DATA (SQLITE + JSON LEGACY)
 // ==========================================
-$customers = json_decode(file_get_contents('data/customers.json'), true);
+require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/includes/functions.php';
+
+// Load customers dari SQLite
+$db = Database::getInstance();
+$customers = $db->query("SELECT * FROM customers ORDER BY name");
+
+// Legacy JSON (masih digunakan untuk produk & mobil)
 $products = json_decode(file_get_contents('data/products.json'), true);
 $users = json_decode(file_get_contents('data/users.json'), true);
 
@@ -19,29 +26,67 @@ $msg = "";
 $activeTab = "pelanggan"; // Default tab saat dibuka
 
 // ==========================================
-// 2. FUNGSI LOGIKA LAMA (TETAP DIPERTAHANKAN)
+// 2. FUNGSI SMART SCORING (FIXED - BOBOT BENAR)
 // ==========================================
+/**
+ * Smart Credit Scoring System
+ * Kriteria 1 (Rata-rata Transaksi/bulan): Bobot 35%
+ * Kriteria 2 (Keterlambatan Bayar): Bobot 30%
+ * Kriteria 3 (Frekuensi Transaksi/bulan): Bobot 20%
+ * Kriteria 4 (Lama Menjadi Pelanggan): Bobot 15%
+ * 
+ * Total Score Range: 0 - 2000 poin
+ */
 function hitungCreditScore($rataJuta, $telatKali, $freqBulanan, $lamaTahun) {
-    if ($rataJuta > 100) $s1 = 20; elseif ($rataJuta >= 50) $s1 = 15; elseif ($rataJuta >= 25) $s1 = 10; else $s1 = 5;
-    $total1 = $s1 * 10;
+    // Kriteria 1: Rata-rata Transaksi (Bobot 35% = 0-700 poin)
+    if ($rataJuta > 100) $s1 = 20; 
+    elseif ($rataJuta >= 50) $s1 = 15; 
+    elseif ($rataJuta >= 25) $s1 = 10; 
+    else $s1 = 5;
+    $total1 = $s1 * 35; // 35% FIXED ✅
     
-    if ($telatKali == 0) $s2 = 20; elseif ($telatKali < 5) $s2 = 15; elseif ($telatKali < 15) $s2 = 10; else $s2 = 5;
-    $total2 = $s2 * 30;
+    // Kriteria 2: Keterlambatan Bayar (Bobot 30% = 0-600 poin)
+    if ($telatKali == 0) $s2 = 20; 
+    elseif ($telatKali < 5) $s2 = 15; 
+    elseif ($telatKali < 15) $s2 = 10; 
+    else $s2 = 5;
+    $total2 = $s2 * 30; // 30% ✅
 
-    if ($freqBulanan > 10) $s3 = 20; elseif ($freqBulanan >= 5) $s3 = 15; elseif ($freqBulanan >= 2) $s3 = 10; else $s3 = 5;
-    $total3 = $s3 * 20;
+    // Kriteria 3: Frekuensi Transaksi (Bobot 20% = 0-400 poin)
+    if ($freqBulanan > 10) $s3 = 20; 
+    elseif ($freqBulanan >= 5) $s3 = 15; 
+    elseif ($freqBulanan >= 2) $s3 = 10; 
+    else $s3 = 5;
+    $total3 = $s3 * 20; // 20% ✅
 
-    if ($lamaTahun > 10) $s4 = 20; elseif ($lamaTahun >= 5) $s4 = 15; elseif ($lamaTahun >= 1) $s4 = 10; else $s4 = 5;
-    $total4 = $s4 * 40;
+    // Kriteria 4: Lama Pelanggan (Bobot 15% = 0-300 poin)
+    if ($lamaTahun > 10) $s4 = 20; 
+    elseif ($lamaTahun >= 5) $s4 = 15; 
+    elseif ($lamaTahun >= 1) $s4 = 10; 
+    else $s4 = 5;
+    $total4 = $s4 * 15; // 15% FIXED ✅
 
+    // Total Score: Max = 700 + 600 + 400 + 300 = 2000 poin
     $grandScore = $total1 + $total2 + $total3 + $total4;
 
-    if ($grandScore < 500) $limit = 0;
-    elseif ($grandScore < 1000) $limit = 25000000;
-    elseif ($grandScore < 1500) $limit = 50000000;
-    else $limit = 100000000;
+    // Credit Limit Classification
+    if ($grandScore <= 400) $limit = rand(0, 5000000);           // 0-5 juta
+    elseif ($grandScore <= 800) $limit = rand(5000000, 20000000);   // 5-20 juta
+    elseif ($grandScore <= 1200) $limit = rand(20000000, 50000000); // 20-50 juta
+    elseif ($grandScore <= 1600) $limit = rand(50000000, 75000000); // 50-75 juta
+    else $limit = rand(75000000, 100000000);                        // 75-100 juta
 
-    return ['score' => $grandScore, 'limit' => $limit];
+    // Return breakdown untuk transparansi
+    return [
+        'score' => $grandScore, 
+        'limit' => $limit,
+        'breakdown' => json_encode([
+            'kriteria_1' => ['score' => $s1, 'poin' => $total1, 'label' => 'Rata Transaksi'],
+            'kriteria_2' => ['score' => $s2, 'poin' => $total2, 'label' => 'Keterlambatan'],
+            'kriteria_3' => ['score' => $s3, 'poin' => $total3, 'label' => 'Frekuensi'],
+            'kriteria_4' => ['score' => $s4, 'poin' => $total4, 'label' => 'Lama Pelanggan']
+        ])
+    ];
 }
 
 // ==========================================
@@ -49,30 +94,50 @@ function hitungCreditScore($rataJuta, $telatKali, $freqBulanan, $lamaTahun) {
 // ==========================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     
-    // --- FITUR LAMA: PELANGGAN ---
+    // --- PELANGGAN (MIGRASI KE SQLITE) ---
     if ($_POST['action'] === 'add_customer_scoring') {
-        $hasil = hitungCreditScore((int)$_POST['rata_transaksi'], (int)$_POST['telat_bayar'], (int)$_POST['freq_transaksi'], (int)$_POST['lama_pelanggan']);
-        $newCust = [
-            "id" => time(),
-            "name" => $_POST['name'],
-            "address" => $_POST['address'],
-            "limit" => $hasil['limit'],
-            "score_data" => $hasil['score'],
-            "debt" => 0,
-            "join_date" => date('Y-m-d')
-        ];
-        $customers[] = $newCust;
-        file_put_contents('data/customers.json', json_encode($customers, JSON_PRETTY_PRINT));
-        $msg = "Pelanggan ditambah! Skor: " . $hasil['score'];
+        require_once __DIR__ . '/config/database.php';
+        
+        $hasil = hitungCreditScore(
+            (int)$_POST['rata_transaksi'], 
+            (int)$_POST['telat_bayar'], 
+            (int)$_POST['freq_transaksi'], 
+            (int)$_POST['lama_pelanggan']
+        );
+        
+        try {
+            $db = Database::getInstance();
+            $db->execute(
+                "INSERT INTO customers (name, address, phone, credit_limit, total_score, scoring_breakdown) 
+                 VALUES (:name, :address, :phone, :limit, :score, :breakdown)",
+                [
+                    'name' => $_POST['name'],
+                    'address' => $_POST['address'],
+                    'phone' => $_POST['phone'] ?? '',
+                    'limit' => $hasil['limit'],
+                    'score' => $hasil['score'],
+                    'breakdown' => $hasil['breakdown']
+                ]
+            );
+            $msg = "✅ Pelanggan berhasil ditambahkan! Skor: " . $hasil['score'] . " poin, Limit: Rp " . number_format($hasil['limit']);
+        } catch (Exception $e) {
+            $msg = "❌ Error: " . $e->getMessage();
+        }
+        
         $activeTab = "pelanggan";
     }
 
     if ($_POST['action'] === 'delete_customer') {
-        $idToDelete = $_POST['id'];
-        $customers = array_filter($customers, function($c) use ($idToDelete) { return $c['id'] != $idToDelete; });
-        $customers = array_values($customers);
-        file_put_contents('data/customers.json', json_encode($customers, JSON_PRETTY_PRINT));
-        $msg = "Data pelanggan dihapus.";
+        require_once __DIR__ . '/config/database.php';
+        
+        try {
+            $db = Database::getInstance();
+            $db->execute("DELETE FROM customers WHERE id = :id", ['id' => $_POST['id']]);
+            $msg = "✅ Data pelanggan berhasil dihapus.";
+        } catch (Exception $e) {
+            $msg = "❌ Error: " . $e->getMessage();
+        }
+        
         $activeTab = "pelanggan";
     }
 
@@ -316,23 +381,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 <tbody>
                     <?php foreach ($customers as $c): ?>
                     <tr>
-                        <td><?= $c['name'] ?><br><small><?= $c['address'] ?></small></td>
-                        <td><span class="badge" style="background:#ddd; color:#000;"><?= $c['score_data'] ?? '-' ?></span></td>
-                        <td style="color: green; font-weight:bold;">Rp <?= number_format($c['limit']) ?></td>
-                        <td>Rp <?= number_format($c['debt']) ?></td>
                         <td>
-                            <?php if($c['debt'] > 0): ?>
-                                <span style="font-size: 10px; color: red;">(Ada Hutang)</span>
-                            <?php else: ?>
-                                <form method="POST" onsubmit="return confirm('Hapus warung ini?');">
-                                    <input type="hidden" name="action" value="delete_customer">
-                                    <input type="hidden" name="id" value="<?= $c['id'] ?>">
-                                    <button class="btn-delete">Hapus</button>
-                                </form>
-                            <?php endif; ?>
+                            <strong><?= htmlspecialchars($c['name']) ?></strong><br>
+                            <small style="color: #666;"><?= htmlspecialchars($c['address'] ?? '-') ?></small>
                         </td>
                         <td>
-                            <a href="profile.php?id=<?= $c['id'] ?>" class="badge" style="background:blue; color:white; text-decoration:none;">📊 Profil</a>
+                            <span class="badge" style="background:#667eea; color:#fff; padding: 5px 10px; border-radius: 4px;">
+                                <?= $c['total_score'] ?? 0 ?> poin
+                            </span>
+                        </td>
+                        <td style="color: green; font-weight:bold;"><?= rupiah($c['credit_limit']) ?></td>
+                        <td style="color: <?= $c['current_debt'] > 0 ? 'red' : '#999' ?>; font-weight: bold;">
+                            <?= rupiah($c['current_debt']) ?>
+                        </td>
+                        <td>
+                            <a href="customer_profile.php?id=<?= $c['id'] ?>" 
+                               class="badge" 
+                               style="background:#28a745; color:white; text-decoration:none; padding: 5px 10px; border-radius: 4px; margin-right: 5px;">
+                                📊 Detail
+                            </a>
+                            <?php if($c['current_debt'] == 0): ?>
+                                <form method="POST" style="display: inline;" onsubmit="return confirm('Hapus pelanggan ini?');">
+                                    <input type="hidden" name="action" value="delete_customer">
+                                    <input type="hidden" name="id" value="<?= $c['id'] ?>">
+                                    <button class="btn-delete" style="padding: 5px 10px;">Hapus</button>
+                                </form>
+                            <?php endif; ?>
                         </td>
                     </tr>
                     <?php endforeach; ?>

@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 "SELECT * FROM orders 
                  WHERE customer_id = :customer_id 
                  AND status = 'DELIVERED' 
-                 ORDER BY order_date ASC", 
+                 ORDER BY created_at ASC", 
                 ['customer_id' => $customerId]
             );
             

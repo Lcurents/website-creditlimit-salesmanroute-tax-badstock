@@ -133,7 +133,7 @@ $items = $db->query(
             <div class="invoice-info">
                 <div style="font-size: 20px; font-weight: bold; margin-bottom: 5px;">FAKTUR</div>
                 <div>No: <strong>INV-<?= $orderId ?></strong></div>
-                <div>Tanggal: <?= tanggal_indo(date('Y-m-d', strtotime($order['order_date']))) ?></div>
+                <div>Tanggal: <?= tanggal_indo(date('Y-m-d', strtotime($order['created_at']))) ?></div>
                 <div>Jatuh Tempo: <?= tanggal_indo($order['due_date']) ?></div>
             </div>
         </div>

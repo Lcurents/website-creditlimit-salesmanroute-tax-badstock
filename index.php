@@ -16,7 +16,7 @@ $today = date("Y-m-d");
 // 1. Omset Hari Ini
 $sql_omset = "SELECT COUNT(*) as total_orders, SUM(total_amount) as total_omset 
               FROM orders 
-              WHERE DATE(order_date) = :today AND status != 'ON HOLD'";
+              WHERE DATE(created_at) = :today AND status != 'ON HOLD'";
 $omset_data = $db->query($sql_omset, ['today' => $today])[0];
 $omsetHariIni = $omset_data['total_omset'] ?? 0;
 $orderHariIni = $omset_data['total_orders'] ?? 0;
@@ -33,7 +33,7 @@ $totalPiutang = $db->query($sql_piutang)[0]['total_debt'] ?? 0;
 $sql_recent = "SELECT o.*, c.name as customer_name 
                FROM orders o 
                LEFT JOIN customers c ON o.customer_id = c.id 
-               ORDER BY o.order_date DESC 
+               ORDER BY o.created_at DESC 
                LIMIT 5";
 $recentOrders = $db->query($sql_recent);
 ?>
@@ -107,7 +107,7 @@ $recentOrders = $db->query($sql_recent);
                     <?php else: ?>
                         <?php foreach ($recentOrders as $order): ?>
                         <tr>
-                            <td><?= date('d/m/Y H:i', strtotime($order['order_date'])) ?></td>
+                            <td><?= date('d/m/Y H:i', strtotime($order['created_at'])) ?></td>
                             <td><?= $order['customer_name'] ?></td>
                             <td><?= status_badge($order['status']) ?></td>
                             <td><strong><?= rupiah($order['total_amount']) ?></strong></td>

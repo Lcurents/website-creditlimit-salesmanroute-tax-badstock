@@ -144,6 +144,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $order = $db->query("SELECT * FROM orders WHERE id = :id AND status = 'ON HOLD'", ['id' => $orderId])[0];
             
             if ($order) {
+                // ✅ VALIDASI STOK ULANG (Mencegah stok negatif)
+                $items = $db->query("SELECT * FROM order_items WHERE order_id = :order_id", ['order_id' => $orderId]);
+                
+                foreach ($items as $item) {
+                    $product = $db->query("SELECT * FROM products WHERE id = :id", ['id' => $item['product_id']])[0];
+                    
+                    if ($product['stock'] < $item['qty']) {
+                        throw new Exception("Stok tidak cukup untuk {$product['name']}! Tersedia: {$product['stock']}, Dibutuhkan: {$item['qty']}");
+                    }
+                }
+                
                 // Update order status
                 $db->execute("UPDATE orders SET status = 'APPROVED', approved_by = :approved_by WHERE id = :id", [
                     'approved_by' => $user['id'],
@@ -167,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 }
                 
                 $db->commit();
-                $msg = "✅ Order berhasil di-APPROVE!";
+                $msg = "✅ Order berhasil di-APPROVE! Stok telah dikurangi.";
                 $msg_type = 'success';
             }
             
@@ -185,7 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] == 'confirm_delivery') {
     $orderId = (int)$_POST['order_id'];
     
-    $db->execute("UPDATE orders SET status = 'DELIVERED' WHERE id = :id AND status = 'APPROVED'", ['id' => $orderId]);
+    $db->execute("UPDATE orders SET status = 'DELIVERED', delivered_at = CURRENT_TIMESTAMP WHERE id = :id AND status = 'APPROVED'", ['id' => $orderId]);
     
     $msg = "✅ Status order diubah menjadi DELIVERED!";
     $msg_type = 'success';
@@ -196,7 +207,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 // ==========================================
 $customers = $db->query("SELECT * FROM customers ORDER BY name");
 $products = $db->query("SELECT * FROM products ORDER BY name");
-$orders = $db->query("SELECT o.*, c.name as customer_name FROM orders o LEFT JOIN customers c ON o.customer_id = c.id ORDER BY o.order_date DESC");
+$orders = $db->query("SELECT o.*, c.name as customer_name FROM orders o LEFT JOIN customers c ON o.customer_id = c.id ORDER BY o.created_at DESC");
 ?>
 
 <!DOCTYPE html>
@@ -356,7 +367,7 @@ $orders = $db->query("SELECT o.*, c.name as customer_name FROM orders o LEFT JOI
                         <td><?= status_badge($o['status']) ?></td>
                         <td>
                             <strong><?= $o['customer_name'] ?></strong><br>
-                            <small style="color: #999;"><?= date('d/m/Y H:i', strtotime($o['order_date'])) ?></small>
+                            <small style="color: #999;"><?= date('d/m/Y H:i', strtotime($o['created_at'])) ?></small>
                         </td>
                         <td style="font-size: 12px; max-width: 300px;">
                             <?= implode(', ', $itemsText) ?>

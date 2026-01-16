@@ -45,8 +45,8 @@ echo "     ✓ Users migrated (" . count($users_json) . " records)\n";
 echo "   - Migrating customers...\n";
 $customers_json = json_decode(file_get_contents(__DIR__ . '/../data/customers.json'), true);
 foreach ($customers_json as $customer) {
-    $sql = "INSERT INTO customers (id, name, address, phone, credit_limit, current_debt) 
-            VALUES (:id, :name, :address, :phone, :limit, :debt)";
+    $sql = "INSERT INTO customers (id, name, address, phone, credit_limit, current_debt, total_score, scoring_breakdown) 
+            VALUES (:id, :name, :address, :phone, :limit, :debt, :score, :breakdown)";
     
     $stmt = $db->prepare($sql);
     $stmt->bindValue(':id', $customer['id'], SQLITE3_INTEGER);
@@ -55,6 +55,8 @@ foreach ($customers_json as $customer) {
     $stmt->bindValue(':phone', $customer['phone'] ?? '', SQLITE3_TEXT);
     $stmt->bindValue(':limit', $customer['limit'], SQLITE3_FLOAT);
     $stmt->bindValue(':debt', $customer['debt'], SQLITE3_FLOAT);
+    $stmt->bindValue(':score', $customer['score_data'] ?? 0, SQLITE3_INTEGER);
+    $stmt->bindValue(':breakdown', $customer['scoring_breakdown'] ?? null, SQLITE3_TEXT);
     $stmt->execute();
 }
 echo "     ✓ Customers migrated (" . count($customers_json) . " records)\n";
@@ -80,14 +82,15 @@ echo "     ✓ Products migrated (" . count($products_json) . " records)\n";
 echo "   - Migrating orders...\n";
 $orders_json = json_decode(file_get_contents(__DIR__ . '/../data/orders.json'), true);
 foreach ($orders_json as $order) {
-    // Insert order
-    $sql = "INSERT INTO orders (id, order_date, due_date, paid_date, customer_id, total_amount, status) 
-            VALUES (:id, :order_date, :due_date, :paid_date, :customer_id, :total, :status)";
+    // Insert order (gunakan 'date' sebagai created_at)
+    $sql = "INSERT INTO orders (id, created_at, due_date, delivered_at, paid_date, customer_id, total_amount, status) 
+            VALUES (:id, :created_at, :due_date, :delivered_at, :paid_date, :customer_id, :total, :status)";
     
     $stmt = $db->prepare($sql);
     $stmt->bindValue(':id', $order['id'], SQLITE3_INTEGER);
-    $stmt->bindValue(':order_date', $order['date'], SQLITE3_TEXT);
+    $stmt->bindValue(':created_at', $order['date'], SQLITE3_TEXT);
     $stmt->bindValue(':due_date', $order['due_date'] ?? null, SQLITE3_TEXT);
+    $stmt->bindValue(':delivered_at', $order['delivered_date'] ?? null, SQLITE3_TEXT);
     $stmt->bindValue(':paid_date', $order['paid_date'] ?? null, SQLITE3_TEXT);
     $stmt->bindValue(':customer_id', $order['customer_id'], SQLITE3_INTEGER);
     $stmt->bindValue(':total', $order['total'], SQLITE3_FLOAT);
