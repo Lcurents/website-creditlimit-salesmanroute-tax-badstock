@@ -90,7 +90,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         <th>Nama Kendaraan</th>
                         <th>Driver</th>
                         <th>Jatuh Tempo</th>
-                        <th>Bukti / Status</th>
+                        <th>Status H-</th>
+                        <th>Status Validasi</th>
+                        <th>Lihat Bukti</th>
                         <th>Aksi</th>
                     </tr>
                 </thead>
@@ -109,19 +111,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     <tr>
                         <td style="font-weight:bold"><?= $c['plat'] ?></td>
                         <td><?= $c['mobil'] ?></td>
-                        <td><?= $c['driver'] ?? $c['pemilik'] ?></td> <td>
-                            <?= date('d M Y', strtotime($c['tgl_pajak'])) ?><br>
-                            <?php if($daysLeft < 0): ?><span style="color:red; font-size:10px;">(Telat <?= abs($daysLeft) ?> hari)</span>
-                            <?php elseif($daysLeft <= 30): ?><span style="color:#d4a017; font-size:10px;">(H-<?= $daysLeft ?>)</span>
+                        <td><?= $c['driver'] ?? $c['pemilik'] ?></td>
+                        <td>
+                            <?= date('d-m-Y', strtotime($c['tgl_pajak'])) ?>
+                        </td>
+                        <td style="text-align: center;">
+                            <?php if($daysLeft < 0): ?>
+                                <span style="background: #dc3545; color: white; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; display: inline-block; white-space: nowrap;">
+                                    🔴 TELAT <?= abs($daysLeft) ?> HARI
+                                </span>
+                            <?php elseif($daysLeft <= 7): ?>
+                                <span style="background: #ff6b6b; color: white; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; display: inline-block; white-space: nowrap;">
+                                    🟠 H-<?= $daysLeft ?>
+                                </span>
+                            <?php elseif($daysLeft <= 30): ?>
+                                <span style="background: #ffc107; color: #000; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; display: inline-block; white-space: nowrap;">
+                                    🟡 H-<?= $daysLeft ?>
+                                </span>
+                            <?php else: ?>
+                                <span style="background: #28a745; color: white; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; display: inline-block;">
+                                    ✅ AMAN
+                                </span>
                             <?php endif; ?>
                         </td>
-                        <td>
+                        <td style="text-align: center;">
                             <?php if($status == 'PENDING'): ?><span class="status-badge st-pending">MENUNGGU VALIDASI</span>
                             <?php elseif($status == 'APPROVED'): ?><span class="status-badge st-approved">SELESAI</span>
                             <?php elseif($status == 'REJECTED'): ?><span class="status-badge st-rejected">DITOLAK (UPLOAD ULANG)</span>
                             <?php else: ?><span class="status-badge st-none">BELUM ADA</span><?php endif; ?>
-                            
-                            <?php if($img): ?><br><a href="uploads/<?= $img ?>" target="_blank" style="font-size:10px; color:blue;">Lihat Foto</a><?php endif; ?>
+                        </td>
+                        <td style="text-align: center;">
+                            <?php if($img): ?>
+                                <a href="uploads/<?= $img ?>" target="_blank" style="background: #007bff; color: white; padding: 5px 12px; border-radius: 5px; text-decoration: none; font-size: 11px; display: inline-block;">
+                                    🖼️ LIHAT FOTO
+                                </a>
+                            <?php else: ?>
+                                <span style="color: #999; font-size: 11px;">Tidak ada</span>
+                            <?php endif; ?>
                         </td>
                         <td>
                             <?php if ($role == 'WAREHOUSE'): ?>

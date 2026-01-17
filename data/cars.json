@@ -34,5 +34,14 @@
         "tgl_pajak": "2027-01-12",
         "bukti_img": "1768633460_swappy-20260112_220130.png",
         "status_validasi": "APPROVED"
+    },
+    {
+        "id": 1768637196,
+        "plat": "BG 1234 PKL",
+        "mobil": "xenia",
+        "driver": "bahlil pertamina",
+        "tgl_pajak": "2026-01-18",
+        "bukti_img": "",
+        "status_validasi": "NONE"
     }
 ]
