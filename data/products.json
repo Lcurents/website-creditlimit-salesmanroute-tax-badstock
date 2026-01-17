@@ -3,18 +3,18 @@
         "id": 1,
         "name": "Mie Instan Goreng (Dus)",
         "price": 110000,
-        "stock": 88
+        "stock": 238
     },
     {
         "id": 2,
         "name": "Kopi Sachet (Pack)",
         "price": 15000,
-        "stock": 64
+        "stock": 214
     },
     {
         "id": 1764214982,
         "name": "Sosis",
         "price": 50000,
-        "stock": 35
+        "stock": 185
     }
 ]

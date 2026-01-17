@@ -78,5 +78,45 @@
         "visit_date": "2026-01-16",
         "sequence": 1,
         "created_by": "SYSTEM_14_DAY_AUTO"
+    },
+    {
+        "id": 1768659128,
+        "salesman_id": 1,
+        "customer_id": 1,
+        "visit_date": "2026-01-13",
+        "sequence": 1,
+        "created_by": "Silvia Fakturis"
+    },
+    {
+        "id": 1768730747,
+        "salesman_id": "1",
+        "customer_id": 1,
+        "visit_date": "2026-01-27",
+        "sequence": 1,
+        "created_by": "SYSTEM_14_DAY_AUTO"
+    },
+    {
+        "id": 1768686894,
+        "salesman_id": 1,
+        "customer_id": 1,
+        "visit_date": "2026-01-14",
+        "sequence": 2,
+        "created_by": "Silvia Fakturis"
+    },
+    {
+        "id": 1768722812,
+        "salesman_id": 10,
+        "customer_id": 1,
+        "visit_date": "2026-01-13",
+        "sequence": 1,
+        "created_by": "Silvia Fakturis"
+    },
+    {
+        "id": 1768717109,
+        "salesman_id": "10",
+        "customer_id": 1,
+        "visit_date": "2026-01-27",
+        "sequence": 1,
+        "created_by": "SYSTEM_14_DAY_AUTO"
     }
 ]
