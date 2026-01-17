@@ -194,36 +194,50 @@ $onTimePayment = $totalOrders > 0 ? round(($paidOrders / $totalOrders) * 100, 1)
                     <strong>📐 Rumus Perhitungan Smart Scoring:</strong>
                     <div style="margin-top: 10px; font-size: 13px; line-height: 1.8;">
                         <div style="margin: 8px 0; padding: 8px; background: #fff; border-left: 3px solid #333;">
-                            <strong>S1 (Frekuensi Order):</strong><br>
-                            • 0-2 order/bulan = 0 poin<br>
-                            • 3-5 order/bulan = 10 poin<br>
-                            • 6+ order/bulan = 20 poin<br>
-                            <em>Bobot: 35% → Poin = Skor × 35</em>
+                            <strong>S1 (Rata-rata Transaksi):</strong><br>
+                            • < Rp 10 juta/order = 0 poin<br>
+                            • Rp 10-25 juta = 5 poin<br>
+                            • Rp 25-50 juta = 10 poin<br>
+                            • Rp 50-100 juta = 15 poin<br>
+                            • > Rp 100 juta = 20 poin<br>
+                            <em>Bobot: 35% → Poin = Skor × 35 (Max: 700)</em>
                         </div>
                         <div style="margin: 8px 0; padding: 8px; background: #fff; border-left: 3px solid #333;">
-                            <strong>S2 (Nilai Transaksi):</strong><br>
-                            • < Rp 5 juta/order = 0 poin<br>
-                            • Rp 5-15 juta/order = 10 poin<br>
-                            • > Rp 15 juta/order = 20 poin<br>
-                            <em>Bobot: 30% → Poin = Skor × 30</em>
+                            <strong>S2 (Keterlambatan Bayar):</strong><br>
+                            • Tidak ada data (< 3 transaksi) = 0 poin<br>
+                            • Tidak pernah telat = 20 poin<br>
+                            • Telat 1-4 kali = 15 poin<br>
+                            • Telat 5-14 kali = 10 poin<br>
+                            • Telat 15+ kali = 5 poin<br>
+                            <em>Bobot: 30% → Poin = Skor × 30 (Max: 600)</em>
                         </div>
                         <div style="margin: 8px 0; padding: 8px; background: #fff; border-left: 3px solid #333;">
-                            <strong>S3 (Riwayat Pembayaran):</strong><br>
-                            • On-time < 50% = 0 poin<br>
-                            • On-time 50-79% = 10 poin<br>
-                            • On-time ≥ 80% = 20 poin<br>
-                            <em>Bobot: 20% → Poin = Skor × 20</em>
+                            <strong>S3 (Frekuensi Transaksi):</strong><br>
+                            • < 1 order/bulan = 0 poin<br>
+                            • 1-2 order/bulan = 5 poin<br>
+                            • 2-5 order/bulan = 10 poin<br>
+                            • 5-10 order/bulan = 15 poin<br>
+                            • > 10 order/bulan = 20 poin<br>
+                            <em>Bobot: 20% → Poin = Skor × 20 (Max: 400)</em>
                         </div>
                         <div style="margin: 8px 0; padding: 8px; background: #fff; border-left: 3px solid #333;">
-                            <strong>S4 (Lama Kerjasama):</strong><br>
+                            <strong>S4 (Lama Menjadi Pelanggan):</strong><br>
                             • < 6 bulan = 0 poin<br>
-                            • 6-12 bulan = 10 poin<br>
-                            • > 1 tahun = 20 poin<br>
-                            <em>Bobot: 15% → Poin = Skor × 15</em>
+                            • 6 bulan - 1 tahun = 5 poin<br>
+                            • 1-5 tahun = 10 poin<br>
+                            • 5-10 tahun = 15 poin<br>
+                            • > 10 tahun = 20 poin<br>
+                            <em>Bobot: 15% → Poin = Skor × 15 (Max: 300)</em>
                         </div>
                         <div style="margin-top: 12px; padding: 10px; background: #333; color: #fff; text-align: center; font-weight: bold;">
                             TOTAL SKOR = S1×35 + S2×30 + S3×20 + S4×15<br>
                             (Maksimal: 20×35 + 20×30 + 20×20 + 20×15 = 2000 poin)
+                        </div>
+                        <div style="margin-top: 10px; padding: 8px; background: #fffacd; border: 2px dashed #ffa500;">
+                            <strong>⚠️ CATATAN PENTING:</strong><br>
+                            • Bobot 35%, 30%, 20%, 15% adalah <strong>kontribusi terhadap skor total</strong>, bukan perkalian dengan 0.35!<br>
+                            • Rumus: Skor (0-20) × Pengali Bobot = Poin<br>
+                            • Contoh: S1=15 → 15 × <strong>35</strong> = 525 poin (bukan 15 × 0.35 = 5.25)
                         </div>
                     </div>
                 </div>
