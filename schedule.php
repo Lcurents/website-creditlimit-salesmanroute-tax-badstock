@@ -3,6 +3,8 @@ session_start();
 if (!isset($_SESSION['user'])) { header("Location: login.php"); exit; }
 $user = $_SESSION['user'];
 
+require_once __DIR__ . '/config/database.php';
+
 // --- Helper Functions (Ambil data dari JSON) ---
 function loadJson($file) {
     if (!file_exists($file)) file_put_contents($file, '[]');
@@ -14,7 +16,10 @@ function saveJson($file, $data) {
 
 $fileSchedules = 'data/salesman_schedules.json';
 $schedules = loadJson($fileSchedules);
-$customers = loadJson('data/customers.json');
+
+// Load customers dari SQLite
+$db = Database::getInstance();
+$customers = $db->query("SELECT * FROM customers ORDER BY name");
 
 // Filter user yang punya role 'FAKTURIS' (Salesman)
 $salesmen = array_filter(loadJson('data/users.json'), function($u) {

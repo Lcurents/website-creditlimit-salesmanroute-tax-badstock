@@ -13,8 +13,10 @@ require_once __DIR__ . '/includes/functions.php';
 $db = Database::getInstance();
 $customers = $db->query("SELECT * FROM customers ORDER BY name");
 
-// Legacy JSON (masih digunakan untuk produk & mobil)
-$products = json_decode(file_get_contents('data/products.json'), true);
+// Load products dari SQLite
+$products = $db->query("SELECT * FROM products ORDER BY name");
+
+// Legacy JSON (masih digunakan untuk users & mobil)
 $users = json_decode(file_get_contents('data/users.json'), true);
 
 // Load Data Mobil
@@ -170,30 +172,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $activeTab = "pelanggan";
     }
 
-    // --- FITUR LAMA: PRODUK ---
+    // --- PRODUK (SQLITE) ---
     if ($_POST['action'] === 'add_product') {
-        $products[] = [ "id" => time(), "name" => $_POST['name'], "price" => (int)$_POST['price'], "stock" => (int)$_POST['stock'] ];
-        file_put_contents('data/products.json', json_encode($products, JSON_PRETTY_PRINT));
-        $msg = "Produk berhasil ditambahkan.";
+        require_once __DIR__ . '/config/database.php';
+        
+        try {
+            $db = Database::getInstance();
+            $db->execute(
+                "INSERT INTO products (name, price, stock) VALUES (:name, :price, :stock)",
+                [
+                    'name' => $_POST['name'],
+                    'price' => (int)$_POST['price'],
+                    'stock' => (int)$_POST['stock']
+                ]
+            );
+            $msg = "✅ Produk berhasil ditambahkan.";
+        } catch (Exception $e) {
+            $msg = "❌ Error: " . $e->getMessage();
+        }
+        
         $activeTab = "produk";
     }
 
     if ($_POST['action'] === 'restock_product') {
-        $key = array_search($_POST['id'], array_column($products, 'id'));
-        if ($key !== false) {
-            $products[$key]['stock'] += (int)$_POST['add_qty'];
-            file_put_contents('data/products.json', json_encode($products, JSON_PRETTY_PRINT));
-            $msg = "Stok berhasil ditambahkan.";
+        require_once __DIR__ . '/config/database.php';
+        
+        try {
+            $db = Database::getInstance();
+            $db->execute(
+                "UPDATE products SET stock = stock + :qty WHERE id = :id",
+                [
+                    'qty' => (int)$_POST['add_qty'],
+                    'id' => $_POST['id']
+                ]
+            );
+            $msg = "✅ Stok berhasil ditambahkan.";
+        } catch (Exception $e) {
+            $msg = "❌ Error: " . $e->getMessage();
         }
+        
         $activeTab = "produk";
     }
 
     if ($_POST['action'] === 'delete_product') {
-        $idToDelete = $_POST['id'];
-        $products = array_filter($products, function($p) use ($idToDelete) { return $p['id'] != $idToDelete; });
-        $products = array_values($products);
-        file_put_contents('data/products.json', json_encode($products, JSON_PRETTY_PRINT));
-        $msg = "Produk dihapus.";
+        require_once __DIR__ . '/config/database.php';
+        
+        try {
+            $db = Database::getInstance();
+            $db->execute("DELETE FROM products WHERE id = :id", ['id' => $_POST['id']]);
+            $msg = "✅ Produk berhasil dihapus.";
+        } catch (Exception $e) {
+            $msg = "❌ Error: " . $e->getMessage();
+        }
+        
         $activeTab = "produk";
     }
 

@@ -2,11 +2,15 @@
 session_start();
 if (!isset($_SESSION['user'])) { header("Location: login.php"); exit; }
 
+require_once __DIR__ . '/config/database.php';
+
 $id = $_GET['id'] ?? null;
 if (!$id) header("Location: settings.php");
 
-$customers = json_decode(file_get_contents('data/customers.json'), true);
-$orders = json_decode(file_get_contents('data/orders.json'), true);
+// Load dari SQLite
+$db = Database::getInstance();
+$customers = $db->query("SELECT * FROM customers");
+$orders = $db->query("SELECT * FROM orders");
 
 // Cari Customer
 $key = array_search($id, array_column($customers, 'id'));
@@ -91,14 +95,19 @@ elseif ($totalScore < 1500) $limitBaru = 50000000;
 else $limitBaru = 100000000;
 
 // ==========================================
-// 4. UPDATE OTOMATIS KE DATABASE JSON
+// 4. UPDATE OTOMATIS KE DATABASE SQLite
 // ==========================================
-// Kita update limitnya setiap kali halaman profil ini dibuka (Realtime Update)
-if ($c['limit'] != $limitBaru) {
-    $customers[$key]['limit'] = $limitBaru;
-    $customers[$key]['score_data'] = $totalScore;
-    file_put_contents('data/customers.json', json_encode($customers, JSON_PRETTY_PRINT));
-    $c['limit'] = $limitBaru; // Update variabel tampilan
+// Update limit otomatis jika berubah
+if ($c['credit_limit'] != $limitBaru) {
+    $db->execute(
+        "UPDATE customers SET credit_limit = :limit, total_score = :score WHERE id = :id",
+        [
+            'limit' => $limitBaru,
+            'score' => $totalScore,
+            'id' => $id
+        ]
+    );
+    $c['credit_limit'] = $limitBaru; // Update variabel tampilan
 }
 ?>
 

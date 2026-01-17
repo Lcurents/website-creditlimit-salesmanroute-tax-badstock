@@ -6,6 +6,8 @@ if (!isset($_SESSION['user'])) {
 }
 $user = $_SESSION['user'];
 
+require_once __DIR__ . '/config/database.php';
+
 // ==========================================
 // 1. SETUP DATA & FILE JSON
 // ==========================================
@@ -19,8 +21,11 @@ if (!file_exists($fileInventory)) file_put_contents($fileInventory, '[]');
 // Load Data
 $claims = json_decode(file_get_contents($fileClaims), true);
 $bsInventory = json_decode(file_get_contents($fileInventory), true);
-$customers = json_decode(file_get_contents('data/customers.json'), true);
-$products = json_decode(file_get_contents('data/products.json'), true);
+
+// Load dari SQLite
+$db = Database::getInstance();
+$customers = $db->query("SELECT * FROM customers ORDER BY name");
+$products = $db->query("SELECT * FROM products ORDER BY name");
 
 $msg = "";
 $activeTab = "form"; // Default tab
@@ -101,7 +106,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                 // SIMPAN SEMUA
                 file_put_contents($fileClaims, json_encode($claims, JSON_PRETTY_PRINT));
-                file_put_contents('data/products.json', json_encode($products, JSON_PRETTY_PRINT));
+                
+                // Update stok produk di SQLite
+                $db->execute(
+                    "UPDATE products SET stock = stock - :qty WHERE id = :id",
+                    [
+                        'qty' => $qtyRusak,
+                        'id' => $prodId
+                    ]
+                );
+                
                 file_put_contents($fileInventory, json_encode($bsInventory, JSON_PRETTY_PRINT));
 
                 $msg = "Klaim Disetujui. Stok Utama dipotong, masuk ke Bad Stock.";

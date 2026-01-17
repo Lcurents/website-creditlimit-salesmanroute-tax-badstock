@@ -119,6 +119,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             
             $db->commit();
             
+            // AUTO-UPDATE CUSTOMER SCORE SETELAH ORDER BARU
+            require_once __DIR__ . '/includes/scoring.php';
+            updateCustomerScore($db, $customerId);
+            
         } catch (Exception $e) {
             $db->rollback();
             $msg = "❌ Error: " . $e->getMessage();

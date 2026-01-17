@@ -39,11 +39,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $paymentId = $db->lastInsertId();
             
             // 2. Get Unpaid Orders (FIFO - oldest first)
+            // Hanya ambil order yang masih DELIVERED (belum PAID)
             $unpaidOrders = $db->query(
-                "SELECT * FROM orders 
-                 WHERE customer_id = :customer_id 
-                 AND status = 'DELIVERED' 
-                 ORDER BY created_at ASC", 
+                "SELECT o.* FROM orders o
+                 WHERE o.customer_id = :customer_id 
+                 AND o.status = 'DELIVERED' 
+                 ORDER BY o.created_at ASC", 
                 ['customer_id' => $customerId]
             );
             
@@ -54,11 +55,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach ($unpaidOrders as $order) {
                 if ($remainingAmount <= 0) break;
                 
-                $orderAmount = $order['total_amount'];
+                $orderTotal = (float)$order['total_amount'];
                 
-                if ($remainingAmount >= $orderAmount) {
-                    // Fully pay this order
-                    $allocatedAmount = $orderAmount;
+                // Cek apakah order ini sudah pernah dibayar sebagian
+                $previousPayments = $db->query(
+                    "SELECT COALESCE(SUM(allocated_amount), 0) as total_paid 
+                     FROM payment_allocations 
+                     WHERE order_id = :order_id",
+                    ['order_id' => $order['id']]
+                );
+                
+                $totalPaid = (float)$previousPayments[0]['total_paid'];
+                $orderOutstanding = $orderTotal - $totalPaid; // Sisa yang belum dibayar
+                
+                if ($orderOutstanding <= 0) {
+                    // Sudah lunas, update status ke PAID
+                    $db->execute("UPDATE orders SET status = 'PAID', paid_date = CURRENT_TIMESTAMP WHERE id = :id", [
+                        'id' => $order['id']
+                    ]);
+                    continue; // Skip ke order berikutnya
+                }
+                
+                // Tentukan berapa yang akan dialokasikan
+                if ($remainingAmount >= $orderOutstanding) {
+                    // Bisa melunasi order ini
+                    $allocatedAmount = $orderOutstanding;
                     
                     // Update order status to PAID
                     $db->execute("UPDATE orders SET status = 'PAID', paid_date = CURRENT_TIMESTAMP WHERE id = :id", [
@@ -67,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     $paidOrdersCount++;
                 } else {
-                    // Partial payment (sisanya masih DELIVERED)
+                    // Bayar sebagian (order tetap DELIVERED)
                     $allocatedAmount = $remainingAmount;
                 }
                 
@@ -94,6 +115,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             
             $db->commit();
+            
+            // AUTO-UPDATE CUSTOMER SCORE SETELAH PEMBAYARAN
+            require_once __DIR__ . '/includes/scoring.php';
+            updateCustomerScore($db, $customerId);
             
             $msg = "✅ Pembayaran " . rupiah($paymentAmount) . " berhasil diterima. $paidOrdersCount faktur telah lunas (FIFO).";
             $msg_type = 'success';
