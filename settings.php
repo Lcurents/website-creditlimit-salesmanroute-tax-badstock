@@ -2,6 +2,7 @@
 session_start();
 if (!isset($_SESSION['user'])) { header("Location: login.php"); exit; }
 $user = $_SESSION['user'];
+$role = $user['role']; // Ambil role user
 
 // ==========================================
 // 1. LOAD DATA (SQLITE + JSON LEGACY)
@@ -240,11 +241,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $cars[$k]['plat'] = strtoupper($_POST['plat']);
                     $cars[$k]['mobil'] = $_POST['mobil'];
                     $cars[$k]['driver'] = $_POST['driver'] ?? '-';
-                    $cars[$k]['pajak_tahunan'] = (int)($_POST['pajak_tahunan'] ?? 0);
                     $cars[$k]['tgl_pajak'] = $_POST['tgl_pajak'] ?? date('Y-m-d');
                     break;
                 }
             }
+
             $msg = "Data Kendaraan Diperbarui.";
         } else {
             // === LOGIKA ADD BARU ===
@@ -253,7 +254,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 "plat" => strtoupper($_POST['plat']),
                 "mobil" => $_POST['mobil'],
                 "driver" => $_POST['driver'] ?? '-', 
-                "pajak_tahunan" => (int)($_POST['pajak_tahunan'] ?? 0), 
                 "tgl_pajak" => $_POST['tgl_pajak'] ?? date('Y-m-d'),
                 "bukti_img" => "",
                 "status_validasi" => "NONE"
@@ -318,12 +318,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
 
         // FUNGSI JAVASCRIPT UNTUK EDIT
-        function editCar(id, plat, mobil, driver, pajak, tgl) {
+        function editCar(id, plat, mobil, driver, tgl) {
             document.getElementById('car_edit_id').value = id;
             document.getElementById('car_plat').value = plat;
             document.getElementById('car_mobil').value = mobil;
             document.getElementById('car_driver').value = driver;
-            document.getElementById('car_pajak').value = pajak;
             document.getElementById('car_tgl').value = tgl;
             
             var btn = document.getElementById('btnSaveCar');
@@ -338,7 +337,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             document.getElementById('car_plat').value = "";
             document.getElementById('car_mobil').value = "";
             document.getElementById('car_driver').value = "";
-            document.getElementById('car_pajak').value = "";
             document.getElementById('car_tgl').value = "";
             
             var btn = document.getElementById('btnSaveCar');
@@ -365,7 +363,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         <div class="tab-container">
             <button class="tab-button" onclick="openTab(event, 'TabPelanggan')" id="btnPelanggan">1. Pelanggan (Scoring)</button>
             <button class="tab-button" onclick="openTab(event, 'TabProduk')" id="btnProduk">2. Produk (Stok)</button>
+            <?php if($role != 'WAREHOUSE'): ?>
             <button class="tab-button" onclick="openTab(event, 'TabKendaraan')" id="btnKendaraan" onclick="resetCarForm()">3. Aset Kendaraan</button>
+            <?php endif; ?>
             <button class="tab-button" onclick="openTab(event, 'TabUser')" id="btnUser">4. User System</button>
         </div>
 
@@ -526,6 +526,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             </table>
         </div>
 
+        <?php if($role != 'WAREHOUSE'): ?>
         <div id="TabKendaraan" class="tab-content">
             <h3 class="section-title">Master Aset Kendaraan</h3>
             <p style="font-size:12px; margin-bottom:10px;">Input data kendaraan operasional dan Driver.</p>
@@ -541,7 +542,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 </div>
                 <div class="form-row">
                     <input type="text" name="driver" id="car_driver" placeholder="Nama Driver / Penanggung Jawab" required style="flex:2">
-                    <input type="number" name="pajak_tahunan" id="car_pajak" placeholder="Biaya Pajak (Rp)" required style="flex:1">
                     <input type="date" name="tgl_pajak" id="car_tgl" required style="flex:1" title="Tanggal Jatuh Tempo">
                 </div>
                 <button type="submit" id="btnSaveCar" style="width:100%; background: #333; color: #fff; border: 2px solid #000;">SIMPAN DATA KENDARAAN</button>
@@ -563,11 +563,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         <td><?= $c['plat'] ?></td>
                         <td><?= $c['mobil'] ?></td>
                         <td><?= $c['driver'] ?? $c['pemilik'] ?? '-' ?></td> 
-                        <td><?= date('d M Y', strtotime($c['tgl_pajak'] ?? date('Y-m-d'))) ?></td>
+                        <td><?= date('d-m-Y', strtotime($c['tgl_pajak'] ?? date('Y-m-d'))) ?></td>
                         <td>
                             <!-- TOMBOL EDIT -->
                             <button type="button" class="btn-edit" 
-                                onclick="editCar('<?= $c['id'] ?>', '<?= $c['plat'] ?>', '<?= $c['mobil'] ?>', '<?= $c['driver'] ?? $c['pemilik'] ?? '-' ?>', '<?= $c['pajak_tahunan'] ?? 0 ?>', '<?= $c['tgl_pajak'] ?? '' ?>')">
+                                onclick="editCar('<?= $c['id'] ?>', '<?= $c['plat'] ?>', '<?= $c['mobil'] ?>', '<?= $c['driver'] ?? $c['pemilik'] ?? '-' ?>', '<?= $c['tgl_pajak'] ?? '' ?>')">
                                 Edit
                             </button>
 
@@ -582,6 +582,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 </tbody>
             </table>
         </div>
+        <?php endif; ?>
 
         <div id="TabUser" class="tab-content">
             <h3 class="section-title">Data User System</h3>
