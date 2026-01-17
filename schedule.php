@@ -109,16 +109,63 @@ foreach ($filteredSchedules as $k => $s) {
 
 
 // ==========================================
-// 3. LOGIC PENAMBAHAN JADWAL 14 HARI (OTOMATIS)
+// 3. LOGIC PENAMBAHAN JADWAL 14 HARI (OTOMATIS) + SKIP HARI LIBUR
 // ==========================================
+
+// Daftar hari libur nasional (format Y-m-d)
+$holidays = [
+    '2026-01-01', // Tahun Baru
+    '2026-02-12', // Imlek
+    '2026-03-22', // Isra Miraj
+    '2026-03-31', // Nyepi
+    '2026-04-03', // Wafat Isa Almasih
+    '2026-05-01', // Hari Buruh
+    '2026-05-14', // Kenaikan Isa Almasih
+    '2026-05-25', // Waisak
+    '2026-06-01', // Pancasila
+    '2026-06-17', // Idul Adha (prediksi)
+    '2026-07-07', // Tahun Baru Islam (prediksi)
+    '2026-08-17', // Kemerdekaan RI
+    '2026-09-16', // Maulid Nabi (prediksi)
+    '2026-12-25', // Natal
+];
+
+// Helper function: Cek apakah tanggal adalah hari libur
+function isHoliday($date, $holidays) {
+    $dateObj = new DateTime($date);
+    $dayOfWeek = $dateObj->format('N'); // 1 (Senin) - 7 (Minggu)
+    
+    // Weekend (Sabtu = 6, Minggu = 7)
+    if ($dayOfWeek == 6 || $dayOfWeek == 7) {
+        return true;
+    }
+    
+    // Hari libur nasional
+    if (in_array($date, $holidays)) {
+        return true;
+    }
+    
+    return false;
+}
+
+// Helper function: Cari hari kerja berikutnya
+function getNextWorkday($date, $holidays) {
+    $dateObj = new DateTime($date);
+    
+    while (isHoliday($dateObj->format('Y-m-d'), $holidays)) {
+        $dateObj->modify('+1 day');
+    }
+    
+    return $dateObj->format('Y-m-d');
+}
 
 if ($selectedSalesmanId) {
     $selectedDateDT = new DateTime($selectedDate);
     $twoWeeksInSeconds = 14 * 24 * 60 * 60;
-    $schedulesUpdated = false; // Flag untuk menandakan ada penambahan otomatis
+    $schedulesUpdated = false;
     $autoAddedCount = 0;
 
-    // Cari semua jadwal Salesman yang dipilih (termasuk tanggal lalu)
+    // Cari semua jadwal Salesman yang dipilih
     $salesmanAllSchedules = array_filter($schedules, function($s) use ($selectedSalesmanId) {
         return (string)$s['salesman_id'] === (string)$selectedSalesmanId;
     });
@@ -142,13 +189,23 @@ if ($selectedSalesmanId) {
             $diffSeconds = $selectedDateDT->getTimestamp() - $visitDateDT->getTimestamp();
             
             // 2. Cek apakah selisih waktu adalah kelipatan 14 hari
-            // Toleransi 1 jam untuk menghindari masalah perbedaan waktu/timestamp
             if ($diffSeconds > 0 && abs($diffSeconds % $twoWeeksInSeconds) < 3600) {
                 
-                // 3. Cek apakah toko ini BELUM ADA di jadwal yang sedang ditampilkan
+                // 3. PENTING: Cek apakah tanggal yang dipilih adalah hari libur
+                $targetDate = $selectedDate;
+                if (isHoliday($targetDate, $holidays)) {
+                    // Pindahkan ke hari kerja berikutnya
+                    $targetDate = getNextWorkday($targetDate, $holidays);
+                }
+                
+                // 4. Cek apakah toko ini BELUM ADA di jadwal target date
                 $alreadyScheduled = false;
-                foreach ($filteredSchedules as $fs) {
-                    if ((string)$fs['customer_id'] === (string)$lastSchedule['customer_id']) {
+                $existingSchedules = array_filter($schedules, function($s) use ($selectedSalesmanId, $targetDate) {
+                    return (string)$s['salesman_id'] === (string)$selectedSalesmanId && $s['visit_date'] === $targetDate;
+                });
+                
+                foreach ($existingSchedules as $es) {
+                    if ((string)$es['customer_id'] === (string)$lastSchedule['customer_id']) {
                         $alreadyScheduled = true;
                         break;
                     }
@@ -156,41 +213,53 @@ if ($selectedSalesmanId) {
                 
                 if (!$alreadyScheduled) {
                     // ** LAKUKAN PENAMBAHAN JADWAL OTOMATIS **
-                    $newSequence = count($filteredSchedules) + 1;
+                    $newSequence = count($existingSchedules) + 1;
                     $newSchedule = [
                         'id' => time() + rand(1, 99999), 
                         'salesman_id' => $selectedSalesmanId,
                         'customer_id' => $lastSchedule['customer_id'],
-                        'visit_date' => $selectedDate,
+                        'visit_date' => $targetDate,
                         'sequence' => $newSequence,
-                        'created_by' => 'SYSTEM_14_DAY_AUTO' 
+                        'created_by' => 'SYSTEM_14_DAY_AUTO' . ($targetDate != $selectedDate ? ' (SHIFTED)' : '')
                     ];
                     
-                    // Tambahkan ke array jadwal utama & set flag
+                    // Tambahkan ke array jadwal utama
                     $schedules[] = $newSchedule;
                     $schedulesUpdated = true;
                     $autoAddedCount++;
                     
-                    // Tambahkan ke filteredSchedules agar langsung muncul di tabel
-                    $customerData = $customersById[$lastSchedule['customer_id']] ?? ['name' => 'Tidak Ditemukan', 'address' => 'N/A'];
-                    $newSchedule['customer_data'] = $customerData;
-                    $filteredSchedules[] = $newSchedule; 
+                    // Tambahkan ke filteredSchedules HANYA jika target date = selected date
+                    if ($targetDate === $selectedDate) {
+                        $customerData = $customersById[$lastSchedule['customer_id']] ?? ['name' => 'Tidak Ditemukan', 'address' => 'N/A'];
+                        $newSchedule['customer_data'] = $customerData;
+                        $filteredSchedules[] = $newSchedule;
+                    }
                 }
             }
         }
     }
     
-    // Hanya simpan dan atur pesan jika ada perubahan otomatis
+    // Hanya simpan jika ada perubahan otomatis
     if ($schedulesUpdated) {
         saveJson($fileSchedules, $schedules);
         
-        // Setelah penambahan otomatis, urutkan ulang filteredSchedules berdasarkan sequence
+        // Reload filteredSchedules untuk tanggal yang dipilih (termasuk yang di-shift)
+        $filteredSchedules = [];
+        foreach ($schedules as $s) {
+            if ((string)$s['salesman_id'] === (string)$selectedSalesmanId && $s['visit_date'] === $selectedDate) {
+                $customerData = $customersById[$s['customer_id']] ?? ['name' => 'Tidak Ditemukan', 'address' => 'N/A'];
+                $s['customer_data'] = $customerData;
+                $filteredSchedules[] = $s;
+            }
+        }
+        
+        // Urutkan ulang berdasarkan sequence
         usort($filteredSchedules, function($a, $b) {
             return $a['sequence'] - $b['sequence'];
         });
         
-        // Tampilkan pesan sukses otomatis
-        if (!isset($_GET['msg_type'])) { // Jangan tumpuk dengan pesan dari redirect
+        // Tampilkan pesan sukses
+        if (!isset($_GET['msg_type'])) {
              $msg = "✅ **{$autoAddedCount}** Jadwal kunjungan 14-hari berhasil ditambahkan secara otomatis.";
         }
     }
