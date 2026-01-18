@@ -29,20 +29,20 @@ $msg = "";
 $activeTab = "pelanggan"; // Default tab saat dibuka
 
 // ==========================================
-// 2. FUNGSI SMART SCORING (FIXED - BOBOT BENAR)
+// 2. FUNGSI SMART SCORING (SESUAI DIAGRAM ACTIVITY)
 // ==========================================
 /**
  * Smart Credit Scoring System
- * Kriteria 1 (Rata-rata Transaksi/bulan): Bobot 35%
- * Kriteria 2 (Keterlambatan Bayar): Bobot 30%
- * Kriteria 3 (Frekuensi Transaksi/bulan): Bobot 20%
- * Kriteria 4 (Lama Menjadi Pelanggan): Bobot 15%
+ * Kriteria 1 (Frekuensi Order): Bobot 10 (Max: 200 poin)
+ * Kriteria 2 (Nilai Transaksi): Bobot 30 (Max: 600 poin)
+ * Kriteria 3 (Riwayat Pembayaran %): Bobot 20 (Max: 400 poin)
+ * Kriteria 4 (Lama Kerjasama): Bobot 40 (Max: 800 poin)
  * 
  * Total Score Range: 0 - 2000 poin
  */
-function hitungCreditScore($rataJuta, $telatKali, $freqBulanan, $lamaTahun) {
+function hitungCreditScore($freqBulanan, $nilaiJuta, $onTimePercent, $lamaTahun) {
     // DETEKSI PELANGGAN BARU: Jika belum ada transaksi, beri limit default terendah
-    $isNewCustomer = ($freqBulanan == 0 && $lamaTahun == 0 && $rataJuta == 0);
+    $isNewCustomer = ($freqBulanan == 0 && $lamaTahun == 0 && $nilaiJuta == 0);
     
     if ($isNewCustomer) {
         // Pelanggan baru: default credit limit terendah
@@ -50,55 +50,39 @@ function hitungCreditScore($rataJuta, $telatKali, $freqBulanan, $lamaTahun) {
             'score' => 0,
             'limit' => 5000000, // Rp 5 juta (default untuk pemula)
             'breakdown' => json_encode([
-                'kriteria_1' => ['score' => 0, 'poin' => 0, 'label' => 'Rata Transaksi', 'bobot' => 35],
-                'kriteria_2' => ['score' => 0, 'poin' => 0, 'label' => 'Keterlambatan', 'bobot' => 30],
-                'kriteria_3' => ['score' => 0, 'poin' => 0, 'label' => 'Frekuensi', 'bobot' => 20],
-                'kriteria_4' => ['score' => 0, 'poin' => 0, 'label' => 'Lama Pelanggan', 'bobot' => 15]
+                'kriteria_1' => ['score' => 0, 'poin' => 0, 'label' => 'Frekuensi Order', 'bobot' => 10],
+                'kriteria_2' => ['score' => 0, 'poin' => 0, 'label' => 'Nilai Transaksi', 'bobot' => 30],
+                'kriteria_3' => ['score' => 0, 'poin' => 0, 'label' => 'Riwayat Pembayaran', 'bobot' => 20],
+                'kriteria_4' => ['score' => 0, 'poin' => 0, 'label' => 'Lama Kerjasama', 'bobot' => 40]
             ])
         ];
     }
     
-    // Kriteria 1: Rata-rata Transaksi (Bobot 35% = 0-700 poin)
-    if ($rataJuta > 100) $s1 = 20; 
-    elseif ($rataJuta >= 50) $s1 = 15; 
-    elseif ($rataJuta >= 25) $s1 = 10; 
-    elseif ($rataJuta >= 10) $s1 = 5;
-    else $s1 = 0; // PERBAIKAN: 0 untuk transaksi < 10 juta
-    $total1 = $s1 * 35;
+    // Kriteria 1: Frekuensi Order (Bobot 10 = 0-200 poin)
+    if ($freqBulanan >= 6) $s1 = 20;      // 6+ order/bulan = 20 poin
+    elseif ($freqBulanan >= 3) $s1 = 10;  // 3-5 order/bulan = 10 poin
+    else $s1 = 0;                         // 0-2 order/bulan = 0 poin
+    $total1 = $s1 * 10;
     
-    // Kriteria 2: Keterlambatan Bayar (Bobot 30% = 0-600 poin)
-    // PERBAIKAN: Pelanggan dengan frekuensi rendah (<3 transaksi) tidak dapat skor maksimal
-    if ($freqBulanan < 3) {
-        // Belum cukup data
-        $s2 = 0;
-    } elseif ($telatKali == 0) {
-        $s2 = 20; 
-    } elseif ($telatKali < 5) {
-        $s2 = 15; 
-    } elseif ($telatKali < 15) {
-        $s2 = 10; 
-    } else {
-        $s2 = 5;
-    }
+    // Kriteria 2: Nilai Transaksi (Bobot 30 = 0-600 poin)
+    if ($nilaiJuta > 15) $s2 = 20;       // > Rp 15 juta = 20 poin
+    elseif ($nilaiJuta >= 5) $s2 = 10;   // Rp 5-15 juta = 10 poin
+    else $s2 = 0;                        // < Rp 5 juta = 0 poin
     $total2 = $s2 * 30;
 
-    // Kriteria 3: Frekuensi Transaksi (Bobot 20% = 0-400 poin)
-    if ($freqBulanan > 10) $s3 = 20; 
-    elseif ($freqBulanan >= 5) $s3 = 15; 
-    elseif ($freqBulanan >= 2) $s3 = 10; 
-    elseif ($freqBulanan >= 1) $s3 = 5;
-    else $s3 = 0; // PERBAIKAN: 0 untuk belum ada transaksi
+    // Kriteria 3: Riwayat Pembayaran (Bobot 20 = 0-400 poin)
+    if ($onTimePercent >= 80) $s3 = 20;      // On-time ≥ 80% = 20 poin
+    elseif ($onTimePercent >= 50) $s3 = 10;  // On-time 50-79% = 10 poin
+    else $s3 = 0;                            // On-time < 50% = 0 poin
     $total3 = $s3 * 20;
 
-    // Kriteria 4: Lama Pelanggan (Bobot 15% = 0-300 poin)
-    if ($lamaTahun > 10) $s4 = 20; 
-    elseif ($lamaTahun >= 5) $s4 = 15; 
-    elseif ($lamaTahun >= 1) $s4 = 10; 
-    elseif ($lamaTahun >= 0.5) $s4 = 5; // Min 6 bulan
-    else $s4 = 0; // PERBAIKAN: 0 untuk pelanggan < 6 bulan
-    $total4 = $s4 * 15;
+    // Kriteria 4: Lama Kerjasama (Bobot 40 = 0-800 poin)
+    if ($lamaTahun > 1) $s4 = 20;        // > 1 tahun = 20 poin
+    elseif ($lamaTahun >= 0.5) $s4 = 10; // 6-12 bulan = 10 poin
+    else $s4 = 0;                        // < 6 bulan = 0 poin
+    $total4 = $s4 * 40;
 
-    // Total Score: Max = 700 + 600 + 400 + 300 = 2000 poin
+    // Total Score: Max = 200 + 600 + 400 + 800 = 2000 poin
     $grandScore = $total1 + $total2 + $total3 + $total4;
 
     // Credit Limit Classification (Fixed per kategori)
@@ -113,10 +97,10 @@ function hitungCreditScore($rataJuta, $telatKali, $freqBulanan, $lamaTahun) {
         'score' => $grandScore, 
         'limit' => $limit,
         'breakdown' => json_encode([
-            'kriteria_1' => ['score' => $s1, 'poin' => $total1, 'label' => 'Rata Transaksi', 'bobot' => 35],
-            'kriteria_2' => ['score' => $s2, 'poin' => $total2, 'label' => 'Keterlambatan', 'bobot' => 30],
-            'kriteria_3' => ['score' => $s3, 'poin' => $total3, 'label' => 'Frekuensi', 'bobot' => 20],
-            'kriteria_4' => ['score' => $s4, 'poin' => $total4, 'label' => 'Lama Pelanggan', 'bobot' => 15]
+            'kriteria_1' => ['score' => $s1, 'poin' => $total1, 'label' => 'Frekuensi Order', 'bobot' => 10],
+            'kriteria_2' => ['score' => $s2, 'poin' => $total2, 'label' => 'Nilai Transaksi', 'bobot' => 30],
+            'kriteria_3' => ['score' => $s3, 'poin' => $total3, 'label' => 'Riwayat Pembayaran', 'bobot' => 20],
+            'kriteria_4' => ['score' => $s4, 'poin' => $total4, 'label' => 'Lama Kerjasama', 'bobot' => 40]
         ])
     ];
 }
@@ -131,10 +115,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         require_once __DIR__ . '/config/database.php';
         
         $hasil = hitungCreditScore(
-            (int)$_POST['rata_transaksi'], 
-            (int)$_POST['telat_bayar'], 
-            (int)$_POST['freq_transaksi'], 
-            (int)$_POST['lama_pelanggan']
+            (int)$_POST['freq_transaksi'],    // S1: Frekuensi Order
+            (int)$_POST['nilai_transaksi'],   // S2: Nilai Transaksi (juta)
+            (int)$_POST['ontime_percent'],    // S3: Riwayat Pembayaran (%)
+            (int)$_POST['lama_pelanggan']     // S4: Lama Kerjasama (tahun)
         );
         
         try {

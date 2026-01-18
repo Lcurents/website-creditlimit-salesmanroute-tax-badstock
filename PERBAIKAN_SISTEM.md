@@ -1,20 +1,74 @@
 # 🔧 PERBAIKAN SISTEM - Sesuai Requirement Laporan KP
 
-## ✅ YANG SUDAH DIPERBAIKI (Tanggal: 16 Januari 2026)
+## ✅ YANG SUDAH DIPERBAIKI
 
-### 1. ✅ **SMART SCORING FORMULA - FIXED**
+### PERBAIKAN TERAKHIR: 18 Januari 2026
+### **Implementasi Aturan Diagram Activity: Skor < 500 = TUNAI ONLY**
+
+**Sesuai Activity Diagram Smart Credit Scoring:**
+
+#### 📋 Aturan Baru yang Diterapkan:
+1. **Customer dengan skor < 500 poin:**
+   - ❌ TIDAK DAPAT fasilitas kredit
+   - ✅ Hanya bisa transaksi TUNAI
+   - Status order otomatis: `PAID` (dianggap sudah dibayar tunai)
+   - Tidak ada due_date (tempo)
+
+2. **Customer dengan skor ≥ 500 poin:**
+   - ✅ ELIGIBLE untuk fasilitas kredit
+   - Mendapat credit limit sesuai klasifikasi:
+     - 500-800: Rp 15 juta
+     - 801-1200: Rp 30 juta
+     - 1201-1600: Rp 50 juta
+     - 1601-2000: Rp 100 juta
+
+#### 🔧 File yang Diperbarui:
+
+**1. [`distribution.php`](distribution.php)**
+   - Validasi backend: Order dari customer skor < 500 otomatis TUNAI
+   - Indikator real-time di form: "💵 TUNAI ONLY - Skor: XXX"
+   - Status order langsung `PAID` (tidak masuk hutang)
+   - Update product stock langsung
+
+**2. [`customer_profile.php`](customer_profile.php)**
+   - Visual status kelayakan kredit:
+     - Skor < 500: Badge "⚠️ TUNAI ONLY" (orange)
+     - Skor ≥ 500: Badge "✅ ELIGIBLE UNTUK KREDIT" (green)
+   - Tabel klasifikasi dengan kolom "Status Kredit"
+   - Dokumentasi lengkap aturan diagram
+
+#### 📊 Mapping Skor ke Status Kredit:
+```
+Skor    | Credit Limit  | Status Kredit
+--------|---------------|----------------
+0-400   | Rp 5 juta     | 💵 TUNAI ONLY
+401-499 | Rp 15 juta    | 💵 TUNAI ONLY
+500-800 | Rp 15 juta    | ✅ KREDIT OK
+801-1200| Rp 30 juta    | ✅ KREDIT OK
+1201-1600| Rp 50 juta   | ✅ KREDIT OK
+1601-2000| Rp 100 juta  | ✅ KREDIT OK
+```
+
+---
+
+### 1. ✅ **SMART SCORING FORMULA - FIXED** (16 Januari 2026)
 
 **Masalah Lama:**
-- Bobot: 10%, 30%, 20%, 40% ❌ (SALAH)
+- Bobot: 10%, 30%, 20%, 40% ❌ (SALAH - pakai desimal)
 
-**Perbaikan Baru:**
-- **Kriteria 1 (Rata Transaksi):** 35% → Max 700 poin ✅
-- **Kriteria 2 (Keterlambatan):** 30% → Max 600 poin ✅
-- **Kriteria 3 (Frekuensi):** 20% → Max 400 poin ✅
-- **Kriteria 4 (Lama Pelanggan):** 15% → Max 300 poin ✅
+**Perbaikan Sesuai Diagram:**
+- **Kriteria 1 (Frekuensi Order):** Bobot 10 → Max 200 poin ✅
+- **Kriteria 2 (Nilai Transaksi):** Bobot 30 → Max 600 poin ✅
+- **Kriteria 3 (Riwayat Pembayaran):** Bobot 20 → Max 400 poin ✅
+- **Kriteria 4 (Lama Kerjasama):** Bobot 40 → Max 800 poin ✅
 - **Total Range:** 0-2000 poin ✅
 
-**File:** [settings.php#L22-L77](settings.php#L22-L77)
+**Formula:**
+```
+TOTAL SKOR = S1×10 + S2×30 + S3×20 + S4×40
+```
+
+**File:** [`includes/scoring.php`](includes/scoring.php), [`settings.php`](settings.php)
 
 ---
 

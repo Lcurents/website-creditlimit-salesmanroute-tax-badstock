@@ -62,22 +62,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 throw new Exception("Tidak ada item yang dipilih!");
             }
             
-            // 2. Check Credit Limit
+            // 2. Check Credit Limit & Smart Score Validation (SESUAI DIAGRAM ACTIVITY)
             $customer = $db->query("SELECT * FROM customers WHERE id = :id", ['id' => $customerId])[0];
-            $futureDebt = $customer['current_debt'] + $grandTotal;
             
-            if ($futureDebt > $customer['credit_limit']) {
-                $status = 'ON HOLD';
-                $msg = "⚠️ Order dibuat tapi ON HOLD karena melebihi limit kredit. Butuh approval Finance.";
-                $msg_type = 'warning';
-            } else {
-                $status = 'APPROVED';
+            // ATURAN DIAGRAM: Skor < 500 = TUNAI ONLY (tidak bisa kredit)
+            if ($customer['total_score'] < 500) {
+                // Customer dengan skor < 500 hanya bisa TUNAI
+                // Order tetap dibuat tapi langsung status PAID (dianggap sudah dibayar tunai)
+                $status = 'PAID';
+                $paidDate = date('Y-m-d');
                 
-                // Update customer debt
-                $db->execute("UPDATE customers SET current_debt = current_debt + :amount WHERE id = :id", [
-                    'amount' => $grandTotal,
-                    'id' => $customerId
-                ]);
+                $msg = "💵 Order berhasil dibuat dengan pembayaran TUNAI (Skor customer: {$customer['total_score']} < 500 - Belum eligible untuk kredit).";
+                $msg_type = 'info';
                 
                 // Update product stock
                 foreach ($orderItems as $item) {
@@ -86,22 +82,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         'id' => $item['product_id']
                     ]);
                 }
+            } else {
+                // Customer dengan skor >= 500 bisa mendapat fasilitas kredit
+                $futureDebt = $customer['current_debt'] + $grandTotal;
                 
-                $msg = "✅ Order berhasil dibuat dan langsung APPROVED!";
-                $msg_type = 'success';
+                if ($futureDebt > $customer['credit_limit']) {
+                    $status = 'ON HOLD';
+                    $msg = "⚠️ Order dibuat tapi ON HOLD karena melebihi limit kredit. Butuh approval Finance.";
+                    $msg_type = 'warning';
+                } else {
+                    $status = 'APPROVED';
+                    
+                    // Update customer debt
+                    $db->execute("UPDATE customers SET current_debt = current_debt + :amount WHERE id = :id", [
+                        'amount' => $grandTotal,
+                        'id' => $customerId
+                    ]);
+                    
+                    // Update product stock
+                    foreach ($orderItems as $item) {
+                        $db->execute("UPDATE products SET stock = stock - :qty WHERE id = :id", [
+                            'qty' => $item['qty'],
+                            'id' => $item['product_id']
+                        ]);
+                    }
+                    
+                    $msg = "✅ Order berhasil dibuat dan langsung APPROVED!";
+                    $msg_type = 'success';
+                }
             }
             
             // 3. Insert Order
-            $dueDate = date('Y-m-d', strtotime('+7 days'));
+            $dueDate = ($status === 'PAID') ? null : date('Y-m-d', strtotime('+14 days'));
             
-            $db->execute("INSERT INTO orders (customer_id, total_amount, status, due_date, created_by) 
-                          VALUES (:customer_id, :total, :status, :due_date, :created_by)", [
-                'customer_id' => $customerId,
-                'total' => $grandTotal,
-                'status' => $status,
-                'due_date' => $dueDate,
-                'created_by' => $user['id']
-            ]);
+            if ($status === 'PAID') {
+                $db->execute("INSERT INTO orders (customer_id, total_amount, status, due_date, paid_date, created_by) 
+                              VALUES (:customer_id, :total, :status, :due_date, :paid_date, :created_by)", [
+                    'customer_id' => $customerId,
+                    'total' => $grandTotal,
+                    'status' => $status,
+                    'due_date' => $dueDate,
+                    'paid_date' => $paidDate,
+                    'created_by' => $user['id']
+                ]);
+            } else {
+                $db->execute("INSERT INTO orders (customer_id, total_amount, status, due_date, created_by) 
+                              VALUES (:customer_id, :total, :status, :due_date, :created_by)", [
+                    'customer_id' => $customerId,
+                    'total' => $grandTotal,
+                    'status' => $status,
+                    'due_date' => $dueDate,
+                    'created_by' => $user['id']
+                ]);
+            }
             
             $orderId = $db->lastInsertId();
             
@@ -237,6 +270,15 @@ $orders = $db->query("SELECT o.*, c.name as customer_name FROM orders o LEFT JOI
             }
 
             let cust = customers.find(c => c.id == custId);
+            
+            // CEK SKOR < 500 = TUNAI ONLY (SESUAI DIAGRAM ACTIVITY)
+            if (cust.total_score < 500) {
+                limitInfo.innerHTML = "💵 TUNAI ONLY - Skor: " + cust.total_score + " (< 500, belum eligible kredit)";
+                limitInfo.style.backgroundColor = "#ff9800";
+                limitInfo.style.color = "white";
+                return;
+            }
+            
             let sisaLimit = cust.credit_limit - cust.current_debt;
 
             let totalBelanja = 0;
@@ -399,6 +441,13 @@ $orders = $db->query("SELECT o.*, c.name as customer_name FROM orders o LEFT JOI
                                 </form>
                             <?php elseif($o['status'] == 'DELIVERED'): ?>
                                 <a href="print_invoice.php?id=<?= $o['id'] ?>" target="_blank" style="background:#fff; color:#333; padding:6px 12px; text-decoration:none; border:1px solid #333; border-radius:3px; font-size:11px;">
+                                    📄 Faktur
+                                </a>
+                            <?php elseif($o['status'] == 'PAID'): ?>
+                                <a href="print_sj.php?id=<?= $o['id'] ?>" target="_blank" style="background:#007bff; color:white; padding:6px 12px; text-decoration:none; border-radius:3px; font-size:11px;">
+                                    🖨️ Cetak SJ
+                                </a><br>
+                                <a href="print_invoice.php?id=<?= $o['id'] ?>" target="_blank" style="background:#fff; color:#333; padding:6px 12px; text-decoration:none; border:1px solid #333; border-radius:3px; font-size:11px; margin-top:5px; display:inline-block;">
                                     📄 Faktur
                                 </a>
                             <?php endif; ?>

@@ -189,62 +189,114 @@ $onTimePayment = $totalOrders > 0 ? round(($paidOrders / $totalOrders) * 100, 1)
                     </div>
                 </div>
 
+                <!-- STATUS KELAYAKAN KREDIT (SESUAI DIAGRAM ACTIVITY) -->
+                <?php if ($customer['total_score'] < 500): ?>
+                    <div style="margin: 15px 0; padding: 15px; background: #fff3cd; border: 3px solid #ff9800; border-radius: 8px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 32px;">💵</span>
+                            <div>
+                                <strong style="color: #f57c00; font-size: 16px;">⚠️ STATUS: TUNAI ONLY</strong><br>
+                                <span style="font-size: 14px; color: #666;">
+                                    Skor customer masih <strong><?= $customer['total_score'] ?> poin</strong> (di bawah 500).<br>
+                                    Belum eligible untuk fasilitas kredit. Semua transaksi harus TUNAI.
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <div style="margin: 15px 0; padding: 15px; background: #e8f5e9; border: 3px solid #4caf50; border-radius: 8px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 32px;">✅</span>
+                            <div>
+                                <strong style="color: #2e7d32; font-size: 16px;">STATUS: ELIGIBLE UNTUK KREDIT</strong><br>
+                                <span style="font-size: 14px; color: #666;">
+                                    Skor customer: <strong><?= $customer['total_score'] ?> poin</strong> (≥ 500).<br>
+                                    Dapat melakukan transaksi kredit dengan limit <strong>Rp <?= number_format($customer['credit_limit'], 0, ',', '.') ?></strong>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
                 <!-- FORMULA EXPLANATION -->
                 <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border: 2px solid #333;">
-                    <strong>📐 Rumus Perhitungan Smart Scoring:</strong>
+                    <strong>📐 Rumus Perhitungan Smart Scoring (Sesuai Diagram Activity):</strong>
                     <div style="margin-top: 10px; font-size: 13px; line-height: 1.8;">
                         <div style="margin: 8px 0; padding: 8px; background: #fff; border-left: 3px solid #333;">
-                            <strong>S1 (Rata-rata Transaksi):</strong><br>
-                            • < Rp 10 juta/order = 0 poin<br>
-                            • Rp 10-25 juta = 5 poin<br>
-                            • Rp 25-50 juta = 10 poin<br>
-                            • Rp 50-100 juta = 15 poin<br>
-                            • > Rp 100 juta = 20 poin<br>
-                            <em>Bobot: 35% → Poin = Skor × 35 (Max: 700)</em>
+                            <strong>S1 (Frekuensi Order):</strong><br>
+                            • 0-2 order/bulan = 0 poin<br>
+                            • 3-5 order/bulan = 10 poin<br>
+                            • 6+ order/bulan = 20 poin<br>
+                            <em>Bobot: 10 → Poin = Skor × 10 (Max: 200 poin)</em>
                         </div>
                         <div style="margin: 8px 0; padding: 8px; background: #fff; border-left: 3px solid #333;">
-                            <strong>S2 (Keterlambatan Bayar):</strong><br>
-                            • Tidak ada data (< 3 transaksi) = 0 poin<br>
-                            • Tidak pernah telat = 20 poin<br>
-                            • Telat 1-4 kali = 15 poin<br>
-                            • Telat 5-14 kali = 10 poin<br>
-                            • Telat 15+ kali = 5 poin<br>
-                            <em>Bobot: 30% → Poin = Skor × 30 (Max: 600)</em>
+                            <strong>S2 (Nilai Transaksi):</strong><br>
+                            • < Rp 5 juta/order = 0 poin<br>
+                            • Rp 5-15 juta/order = 10 poin<br>
+                            • > Rp 15 juta/order = 20 poin<br>
+                            <em>Bobot: 30 → Poin = Skor × 30 (Max: 600 poin)</em>
                         </div>
                         <div style="margin: 8px 0; padding: 8px; background: #fff; border-left: 3px solid #333;">
-                            <strong>S3 (Frekuensi Transaksi):</strong><br>
-                            • < 1 order/bulan = 0 poin<br>
-                            • 1-2 order/bulan = 5 poin<br>
-                            • 2-5 order/bulan = 10 poin<br>
-                            • 5-10 order/bulan = 15 poin<br>
-                            • > 10 order/bulan = 20 poin<br>
-                            <em>Bobot: 20% → Poin = Skor × 20 (Max: 400)</em>
+                            <strong>S3 (Riwayat Pembayaran):</strong><br>
+                            • On-time < 50% = 0 poin<br>
+                            • On-time 50-79% = 10 poin<br>
+                            • On-time ≥ 80% = 20 poin<br>
+                            <em>Bobot: 20 → Poin = Skor × 20 (Max: 400 poin)</em>
                         </div>
                         <div style="margin: 8px 0; padding: 8px; background: #fff; border-left: 3px solid #333;">
-                            <strong>S4 (Lama Menjadi Pelanggan):</strong><br>
+                            <strong>S4 (Lama Kerjasama):</strong><br>
                             • < 6 bulan = 0 poin<br>
-                            • 6 bulan - 1 tahun = 5 poin<br>
-                            • 1-5 tahun = 10 poin<br>
-                            • 5-10 tahun = 15 poin<br>
-                            • > 10 tahun = 20 poin<br>
-                            <em>Bobot: 15% → Poin = Skor × 15 (Max: 300)</em>
+                            • 6-12 bulan = 10 poin<br>
+                            • > 1 tahun = 20 poin<br>
+                            <em>Bobot: 40 → Poin = Skor × 40 (Max: 800 poin)</em>
                         </div>
                         <div style="margin-top: 12px; padding: 10px; background: #333; color: #fff; text-align: center; font-weight: bold;">
-                            TOTAL SKOR = S1×35 + S2×30 + S3×20 + S4×15<br>
-                            (Maksimal: 20×35 + 20×30 + 20×20 + 20×15 = 2000 poin)
+                            TOTAL SKOR = S1×10 + S2×30 + S3×20 + S4×40<br>
+                            (Maksimal: 20×10 + 20×30 + 20×20 + 20×40 = 2000 poin)
                         </div>
+                        
+                        <?php
+                        // Tampilkan perhitungan REAL customer ini
+                        if ($breakdown) {
+                            $s1 = $breakdown['kriteria_1']['score'];
+                            $s2 = $breakdown['kriteria_2']['score'];
+                            $s3 = $breakdown['kriteria_3']['score'];
+                            $s4 = $breakdown['kriteria_4']['score'];
+                            
+                            $p1 = $breakdown['kriteria_1']['poin'];
+                            $p2 = $breakdown['kriteria_2']['poin'];
+                            $p3 = $breakdown['kriteria_3']['poin'];
+                            $p4 = $breakdown['kriteria_4']['poin'];
+                            
+                            $total = $customer['total_score'];
+                        ?>
+                        <div style="margin-top: 10px; padding: 12px; background: #e3f2fd; border: 3px solid #1976d2;">
+                            <strong style="color: #1565c0;">🧮 PERHITUNGAN UNTUK <?= strtoupper(htmlspecialchars($customer['name'])) ?>:</strong><br>
+                            <div style="margin-top: 8px; font-family: 'Courier New', monospace; font-size: 14px; line-height: 2;">
+                                TOTAL SKOR = <strong><?= $s1 ?></strong>×10 + <strong><?= $s2 ?></strong>×30 + <strong><?= $s3 ?></strong>×20 + <strong><?= $s4 ?></strong>×40<br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <?= $p1 ?> + <?= $p2 ?> + <?= $p3 ?> + <?= $p4 ?><br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <strong style="color: #1565c0; font-size: 16px;"><?= $total ?> poin</strong>
+                            </div>
+                            <div style="margin-top: 8px; padding: 8px; background: #fff; border-left: 4px solid #1976d2; font-size: 13px;">
+                                💡 Credit Limit: <strong>Rp <?= number_format($customer['credit_limit'], 0, ',', '.') ?></strong>
+                            </div>
+                        </div>
+                        <?php } ?>
+                        
                         <div style="margin-top: 10px; padding: 8px; background: #fffacd; border: 2px dashed #ffa500;">
-                            <strong>⚠️ CATATAN PENTING:</strong><br>
-                            • Bobot 35%, 30%, 20%, 15% adalah <strong>kontribusi terhadap skor total</strong>, bukan perkalian dengan 0.35!<br>
-                            • Rumus: Skor (0-20) × Pengali Bobot = Poin<br>
-                            • Contoh: S1=15 → 15 × <strong>35</strong> = 525 poin (bukan 15 × 0.35 = 5.25)
+                            <strong>⚠️ CATATAN PENTING (Sesuai Activity Diagram):</strong><br>
+                            • Bobot 10, 30, 20, 40 adalah <strong>pengali tetap</strong> (bukan persentase 0.1, 0.3, dst!)<br>
+                            • <strong style="color: #d32f2f;">Skor < 500 poin = TUNAI ONLY</strong> (tidak dapat fasilitas kredit)<br>
+                            • <strong style="color: #388e3c;">Skor ≥ 500 poin = ELIGIBLE KREDIT</strong> sesuai klasifikasi limit<br>
+                            • Formula sesuai dengan <strong>Activity Diagram Smart Credit Scoring</strong><br>
+                            • Contoh umum: S1=20, S2=10, S3=20, S4=10 → Total = (20×10)+(10×30)+(20×20)+(10×40) = 200+300+400+400 = <strong>1300 poin</strong>
                         </div>
                     </div>
                 </div>
 
                 <!-- MAPPING SKOR KE CREDIT LIMIT -->
                 <div style="margin: 20px 0; padding: 15px; background: #fff; border: 3px solid #333;">
-                    <strong style="font-size: 15px;">🎯 Konversi Skor ke Credit Limit:</strong>
+                    <strong style="font-size: 15px;">🎯 Konversi Skor ke Credit Limit (Sesuai Diagram Activity):</strong>
                     <div style="margin: 15px 0; padding: 12px; background: #f8f9fa; border-left: 4px solid #333;">
                         <strong>📋 Formula Perhitungan:</strong><br>
                         <code style="background: #fff; padding: 3px 8px; border: 1px solid #ddd; font-family: monospace;">
@@ -258,33 +310,45 @@ $onTimePayment = $totalOrders > 0 ? round(($paidOrders / $totalOrders) * 100, 1)
                                 <th style="padding: 10px; border: 2px solid #000;">Range Skor</th>
                                 <th style="padding: 10px; border: 2px solid #000;">Kategori</th>
                                 <th style="padding: 10px; border: 2px solid #000;">Credit Limit</th>
+                                <th style="padding: 10px; border: 2px solid #000;">Status Kredit</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr style="background: #f8f9fa;">
-                                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">0 - 400</td>
+                            <tr style="background: #fff3cd;">
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;"><strong>0 - 400</strong></td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">SANGAT RENDAH</td>
                                 <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Rp 5.000.000</td>
+                                <td style="padding: 8px; border: 1px solid #ddd; color: #f57c00;"><strong>💵 TUNAI ONLY</strong></td>
                             </tr>
-                            <tr>
-                                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">401 - 800</td>
+                            <tr style="background: #fff3cd;">
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;"><strong>401 - 499</strong></td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">RENDAH (Batas)</td>
+                                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Rp 15.000.000</td>
+                                <td style="padding: 8px; border: 1px solid #ddd; color: #f57c00;"><strong>💵 TUNAI ONLY</strong></td>
+                            </tr>
+                            <tr style="background: #e8f5e9;">
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;"><strong>500 - 800</strong></td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">RENDAH</td>
                                 <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Rp 15.000.000</td>
+                                <td style="padding: 8px; border: 1px solid #ddd; color: #2e7d32;"><strong>✅ KREDIT OK</strong></td>
                             </tr>
-                            <tr style="background: #f8f9fa;">
-                                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">801 - 1200</td>
+                            <tr style="background: #e8f5e9;">
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;"><strong>801 - 1200</strong></td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">SEDANG</td>
                                 <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Rp 30.000.000</td>
+                                <td style="padding: 8px; border: 1px solid #ddd; color: #2e7d32;"><strong>✅ KREDIT OK</strong></td>
                             </tr>
-                            <tr>
-                                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">1201 - 1600</td>
+                            <tr style="background: #e8f5e9;">
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;"><strong>1201 - 1600</strong></td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">TINGGI</td>
                                 <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Rp 50.000.000</td>
+                                <td style="padding: 8px; border: 1px solid #ddd; color: #2e7d32;"><strong>✅ KREDIT OK</strong></td>
                             </tr>
-                            <tr style="background: #f8f9fa;">
-                                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">1601 - 2000</td>
+                            <tr style="background: #e8f5e9;">
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;"><strong>1601 - 2000</strong></td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">SANGAT TINGGI</td>
                                 <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Rp 100.000.000</td>
+                                <td style="padding: 8px; border: 1px solid #ddd; color: #2e7d32;"><strong>✅ KREDIT OK</strong></td>
                             </tr>
                         </tbody>
                     </table>
