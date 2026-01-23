@@ -1,22 +1,46 @@
 # 📦 Distribusi App - Sales & Credit Management System
 
-> Sistem manajemen distribusi modern dengan credit limit management, FIFO payment allocation, inventory tracking, dan badstock management. Dibangun dengan PHP & SQLite untuk performa maksimal dan kemudahan deployment.
+> Sistem manajemen distribusi modern dengan **Credit Limit Management**, **FIFO Payment Allocation**, **Salesman Route Scheduling**, **Vehicle Tax Management**, dan **Badstock Handling**. Dibangun dengan PHP & SQLite untuk performa maksimal dan kemudahan deployment.
 
-![PHP](https://img.shields.io/badge/PHP-8.5+-777BB4?style=flat&logo=php&logoColor=white)
+![PHP](https://img.shields.io/badge/PHP-8.0+-777BB4?style=flat&logo=php&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-3-003B57?style=flat&logo=sqlite&logoColor=white)
+![Version](https://img.shields.io/badge/Version-1.0.0-blue)
 ![License](https://img.shields.io/badge/License-Proprietary-red)
 
 ---
 
 ## 📑 Table of Contents
 
-- [Quick Start](#-quick-start)
-- [Fitur Utama](#-fitur-utama)
-- [Panduan Lengkap](#-panduan-lengkap-per-modul)
-- [Database Schema](#-database-schema-detail)
-- [Instalasi](#-instalasi-lengkap)
-- [Troubleshooting](#-troubleshooting)
-- [Developer Guide](#-developer-guide)
+- [🌟 Overview](#-overview)
+- [🚀 Quick Start](#-quick-start)
+- [✨ Fitur Utama](#-fitur-utama)
+- [📊 Database & Class Diagram](#-database--class-diagram)
+- [📖 Panduan Lengkap](#-panduan-lengkap-per-modul)
+- [🛠️ Instalasi](#-instalasi-lengkap)
+- [🔧 Troubleshooting](#-troubleshooting)
+- [👨‍💻 Developer Guide](#-developer-guide)
+- [📁 Struktur Project](#-struktur-project)
+
+---
+
+## 🌟 Overview
+
+**Distribusi App** adalah sistem ERP ringan yang dirancang khusus untuk bisnis distribusi/sales. Sistem ini mengelola:
+
+- 💰 **Credit Management**: Kontrol kredit pelanggan dengan scoring system
+- 💵 **FIFO Payment**: Alokasi pembayaran otomatis ke faktur terlama
+- 🚚 **Salesman Routes**: Jadwal kunjungan salesman ke pelanggan
+- 🚗 **Vehicle Tax**: Tracking pajak kendaraan dengan reminder
+- 📦 **Badstock**: Pengelolaan barang rusak/kadaluarsa
+- 📊 **Real-time Reports**: Dashboard dan laporan lengkap
+
+### Tech Stack
+- **Backend**: PHP 8.0+ (Native, no framework)
+- **Database**: SQLite3 (Portable, no server needed)
+- **Frontend**: HTML5, CSS3, Vanilla JavaScript
+- **Architecture**: MVC Pattern dengan CRUD operations
+
+---
 
 ---
 
@@ -82,7 +106,51 @@ Buka browser: **http://localhost:8000/login.php**
 
 ---
 
-## 📖 Panduan Lengkap Per Modul
+## � Database & Class Diagram
+
+### Database Schema
+
+Sistem menggunakan SQLite3 dengan 11 tabel utama:
+
+**Tabel Utama:**
+1. **users** - User authentication & role management
+2. **customers** - Data pelanggan dengan credit limit
+3. **products** - Inventory produk
+4. **orders** - Order/faktur penjualan
+5. **order_items** - Detail item per order
+6. **payments** - Pembayaran dari customer
+7. **payment_allocations** - FIFO payment tracking
+8. **salesman_schedules** - Jadwal kunjungan salesman
+9. **cars** - Data kendaraan untuk pajak
+10. **badstock_claims** - Klaim barang rusak
+11. **badstock_inventory** - Inventory badstock
+
+### Class Diagram
+
+Class diagram menggambarkan relasi antar entity dalam sistem:
+
+**Entity Relationships:**
+- `User` → `Order` (1:N) - User membuat dan menyetujui order
+- `Customer` → `Order` (1:N) - Customer memesan banyak order
+- `Customer` → `Payment` (1:N) - Customer melakukan banyak payment
+- `Order` → `OrderItem` (1:N) - Order berisi banyak item
+- `Product` → `OrderItem` (1:N) - Product dipesan dalam banyak order
+- `Order` ↔ `Payment` (M:N) - Many-to-Many via PaymentAllocation
+
+**Key Features:**
+- ✅ Credit Limit validation sebelum order disetujui
+- ✅ FIFO Payment Allocation untuk pelunasan otomatis
+- ✅ Real-time stock management
+- ✅ Salesman route scheduling
+- ✅ Vehicle tax tracking dengan reminder
+
+**Lihat Detail:**
+- Database Schema: [config/schema.sql](config/schema.sql)
+- Class Diagram: Dokumentasi lengkap tersedia dalam project
+
+---
+
+## �📖 Panduan Lengkap Per Modul
 
 ### 1. 🔐 LOGIN & AUTHENTICATION
 
@@ -1179,6 +1247,44 @@ $orders = $db->query(
 
 ---
 
+## 📁 Struktur Project
+
+```
+distribusi-app/
+├── config/
+│   ├── database.php          # Database connection
+│   ├── schema.sql            # Database schema
+│   └── setup.php             # Setup script
+├── data/
+│   ├── customers.json        # Customer seed data
+│   ├── products.json         # Product seed data
+│   ├── orders.json           # Order seed data
+│   └── ...                   # Other seed data
+├── database/
+│   └── distribusi.db         # SQLite database (auto-generated)
+├── includes/
+│   ├── functions.php         # Helper functions
+│   └── scoring.php           # Credit scoring logic
+├── uploads/                  # File uploads (tax proof, badstock images)
+├── index.php                 # Dashboard
+├── login.php                 # Login page
+├── logout.php                # Logout handler
+├── distribution.php          # Order management
+├── finance.php               # Payment & approval
+├── customer_profile.php      # Customer details
+├── schedule.php              # Salesman routes
+├── pajak.php                 # Vehicle tax management
+├── badstock.php              # Badstock handling
+├── settings.php              # System settings
+├── style.css                 # Global styles
+├── sidebar.php               # Navigation sidebar
+├── install_sqlite.sh         # SQLite installer (Arch)
+├── setup.sh                  # Database setup script
+└── README.md                 # This file
+```
+
+---
+
 ## 📄 License
 
 Proprietary - Internal Use Only
@@ -1187,37 +1293,50 @@ Proprietary - Internal Use Only
 
 ## 📞 Support
 
-Untuk pertanyaan atau bug report, hubungi developer.
+Untuk pertanyaan, bug report, atau feature request, hubungi developer.
 
 ---
 
 ## 🎯 Roadmap
 
-### v2.1 (Next Release)
-- [ ] Migrate semua modul ke SQLite
-- [ ] CSRF token protection
-- [ ] Data export (Excel/PDF)
+### v1.1 (Next Release)
+- [ ] Export reports ke Excel/PDF
+- [ ] Email notification untuk reminder pajak
 - [ ] Responsive mobile UI
+- [ ] Advanced filtering & search
 
-### v2.2 (Future)
+### v1.2 (Future)
 - [ ] REST API endpoints
-- [ ] Real-time notifications
-- [ ] Advanced reporting
+- [ ] Real-time WebSocket notifications
 - [ ] Multi-warehouse support
+- [ ] Advanced analytics dashboard
 
-### v3.0 (Long Term)
-- [ ] Full MVC framework (Laravel)
+### v2.0 (Long Term)
+- [ ] Migrate ke framework modern (Laravel/Next.js)
 - [ ] Mobile app (React Native)
 - [ ] Cloud deployment
-- [ ] Advanced analytics
+- [ ] AI-powered credit scoring
 
 ---
 
-**Last Updated:** January 16, 2026  
-**Version:** 2.0.0 (SQLite)  
-**PHP Version:** 8.5.1  
-**Database:** SQLite 3
+## 🙏 Credits
 
+**Development Team:**
+- Backend Developer
+- Database Designer
+- UI/UX Designer
+
+**Technologies Used:**
+- PHP 8.0+
+- SQLite 3
+- Vanilla JavaScript
+- CSS3
+
+---
+
+**Last Updated:** January 23, 2026  
+**Version:** 1.0.0  
+**PHP Version:** 8.0+  
 ---
 
 Made with ❤️ for better distribution management
